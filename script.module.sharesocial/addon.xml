@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<addon id="script.module.social"
+       name="Share Social"
+       version="0.1.0"
+       provider-name="Rick Phillips (ruuk)">
+  <requires>
+    <import addon="xbmc.python" version="2.0"/>
+  </requires>
+
+  <extension point="xbmc.python.module"
+            library="lib" />
+            
+  <extension point="xbmc.addon.metadata">
+    <summary lang="en">Social Sharing Module</summary>
+    <description>Allows addons to share between social web entities</description>
+	<platform>all</platform>
+  </extension>
+</addon>
