@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import xbmcaddon, xbmc, xbmcgui #@UnresolvedImport
-import os
+import os, sys
 
 __author__ = 'ruuk'
 __url__ = 'http://code.google.com'
@@ -18,8 +18,8 @@ if not os.path.exists(MAIN_PATH): os.makedirs(MAIN_PATH)
 def LOG(text):
 	print text
 	
-def getShare(source,sharetype=None,content=None,source_name='',share_title=''):
-	return Share(source,sharetype,content)
+def getShare(source,sharetype):
+	return Share(source,sharetype)
 
 def getShareTarget():
 	return ShareTarget()
@@ -27,26 +27,31 @@ def getShareTarget():
 def registerShareTarget(target):
 	ShareManager().registerShareTarget(target)
 	
-def shareTargetAvailable(share_type):
-	return ShareManager().shareTargetAvailable(share_type)
+def shareTargetAvailable(share_type,sourceID):
+	return ShareManager().shareTargetAvailable(share_type,sourceID)
 
 class Share():
-	def __init__(self,source,sharetype=None,content=None,source_name='',share_title=''):
+	def __init__(self,sourceID,sharetype):
+		self.sourceID = sourceID
 		self.shareType = sharetype
-		self.content = content
-		self.source = source
-		self.sourceName = source_name
-		self.title = share_title
+		self.content = None
+		self.sourceName = ''
+		self.title = ''
+		self.thumbnail = ''
+		self.link = ''
+		self.lattitude = None
+		self.longitude = None
+		self.altitude = None
 	
 	def share(self):
 		ShareManager().doShare(self)
 	
 class ShareTarget():
 	def __init__(self,target_data=None):
-		self.ID = ''
+		self.addonID = ''
 		self.shareTypes = []
 		self.name = ''
-		self.importName = ''
+		self.importPath = ''
 		self.iconPath = ''
 		if target_data: self.fromString(target_data)
 	
@@ -54,22 +59,28 @@ class ShareTarget():
 		if shareType in self.shareTypes: return True
 		return False
 	
+	def getIconPath(self):
+		if self.iconPath: return self.iconPath
+		iconPath = os.path.join(xbmcaddon.Addon(self.addonID).getAddonInfo('path'),'icon.png')
+		if os.path.exists(iconPath): return iconPath
+		return None
+	
 	def fromString(self,target_data):
 		kvdict = {}
 		for keyval in target_data.split(':::'):
 			key,val = keyval.split('=',1)
 			kvdict[key] = val
-		self.ID = kvdict.get('ID')
+		self.addonID = kvdict.get('addonID')
 		self.name = kvdict.get('name')
-		self.importName = kvdict.get('importName')
+		self.importPath = kvdict.get('importPath')
 		self.shareTypes = kvdict.get('shareTypes').split(',')
 		self.iconPath = kvdict.get('iconPath')
 		return self
 	
 	def toString(self):
-		return 'ID=%s:::name=%s:::importName=%s:::shareTypes=%s:::iconPath=%s' % (	self.ID,
+		return 'addonID=%s:::name=%s:::importPath=%s:::shareTypes=%s:::iconPath=%s' % (	self.addonID,
 																					self.name,
-																					self.importName,
+																					self.importPath,
 																					','.join(self.shareTypes),
 																					self.iconPath )
 	
@@ -97,9 +108,9 @@ class ShareManager():
 		optionIDs = []
 		for tkey in self.targets:
 			target = self.targets[tkey]
-			if target.canShare(share.shareType):
+			if target.canShare(share.shareType) and target.addonID != share.sourceID:
 				options.append(target.name)
-				optionIDs.append(target.ID)
+				optionIDs.append(target.addonID)
 		idx = xbmcgui.Dialog().select("Share to:",options)
 		if idx < 0:
 			return None
@@ -107,27 +118,34 @@ class ShareManager():
 			option = optionIDs[idx]
 		return self.targets[option]
 	
-	def shareTargetAvailable(self,share_type):
+	def shareTargetAvailable(self,share_type,sourceID):
 		for target in self.targets.values():
-			if target.canShare(share_type): return True
+			if target.canShare(share_type) and target.addonID != sourceID: return True
 		return False
 				
 	def registerShareTarget(self,target):
-		self.targets[target.ID] = target
+		self.targets[target.addonID] = target
 		self.writeTargets()
 		
 	def unRegisterShareTarget(self,target):
-		if target.ID in self.targets:
-			del self.targets[target.ID]
+		if target.addonID in self.targets:
+			del self.targets[target.addonID]
 			self.writeTargets()
 	
 	def handOffShare(self,target,share):
+		module = os.path.basename(target.importPath)
+		subPath = os.path.dirname(target.importPath)
+		addonPath = xbmcaddon.Addon(target.addonID).getAddonInfo('path')
+		importPath = os.path.join(addonPath,subPath)
+		sys.path.insert(0,importPath)
 		try:
-			mod = __import__(target.importName)
+			mod = __import__(module)
 		except ImportError:
-			LOG('Error importing module %s for share target %s. Unregistering target.' % (target.importName,target.ID))
+			LOG('Error importing module %s for share target %s. Unregistering target.' % (target.importPath,target.addonID))
 			self.unRegisterShareTarget(target)
 			return False
+		finally:
+			del sys.path[0]
 		mod.doShareSocial(share)
 		return True
 	
@@ -138,8 +156,9 @@ class ShareManager():
 		tdata = tf.read()
 		tf.close()
 		for t in tdata.splitlines():
+			if not t: continue
 			target = ShareTarget(t)
-			self.targets[target.ID] = target
+			self.targets[target.addonID] = target
 			
 	def writeTargets(self):
 		out = ''
