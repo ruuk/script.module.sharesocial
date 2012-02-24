@@ -6,10 +6,15 @@
   <requires>
     <import addon="xbmc.python" version="2.0"/>
   </requires>
-
+  
+  <extension point="xbmc.python.script"
+             library="share.py">
+    <provides>executable</provides>
+  </extension>
+  
   <extension point="xbmc.python.module"
             library="lib" />
-            
+       
   <extension point="xbmc.addon.metadata">
     <summary lang="en">Social Sharing Module</summary>
     <description>Allows addons to share between social web entities</description>
