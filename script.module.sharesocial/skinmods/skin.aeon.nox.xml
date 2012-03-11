@@ -1,0 +1,111 @@
+<window id="106">
+	<defaultcontrol>1000</defaultcontrol>
+  <zorder>6</zorder>
+  <coordinates>
+    <system>1</system>
+    <posx>0</posx>
+    <posy>0</posy>
+  </coordinates>
+  <include>Animation_DialogZoom</include>
+  <controls>
+    <include condition="Skin.HasSetting(effect_bg)">BG_Effect_Home</include>
+    <control type="image" id="999">
+      <description>background image</description>
+      <posx>0</posx>
+      <posy>0</posy>
+      <width>308</width>
+      <height>720</height>
+      <texture>dialogs/context_middle.png</texture>
+    </control>
+    <control type="grouplist" id="996">
+      <posx>0</posx>
+      <posy>0</posy>
+      <width>308</width>
+      <height max="720">auto</height>
+      <itemgap>0</itemgap>
+      <onright>995</onright>
+    </control>
+    <control type="image" id="997">
+      <description>background top image</description>
+      <posx>0</posx>
+      <posy>-26</posy>
+      <width>308</width>
+      <height>26</height>
+      <texture>dialogs/context_top.png</texture>
+    </control>
+    <control type="image" id="998">
+      <description>background bottom image</description>
+      <posx>0</posx>
+      <posy>390</posy>
+      <width>308</width>
+      <height>27</height>
+      <texture>dialogs/context_bottom.png</texture>
+    </control>
+		<control type="group">
+			<visible>System.HasAddon(script.module.sharesocial) + !ListItem.IsFolder + !StringCompare(Container.FolderPath,) + !Container.Content(Addons) + !StringCompare(ListItem.Property(sharing),handled) + !SubString(ListItem.FileNameAndPath,plugin://,Left)</visible>
+			<posx>310</posx>
+			<posy>10</posy>
+			<control type="image">
+				<description>background top image</description>
+				<posx>0</posx>
+				<posy>-26</posy>
+				<width>168</width>
+				<height>26</height>
+				<texture>dialogs/context_top.png</texture>
+			</control>
+			<control type="image">
+				<description>Share button background image</description>
+				<posx>0</posx>
+				<posy>0</posy>
+				<width>168</width>
+				<height>39</height>
+				<texture>dialogs/context_middle.png</texture>
+			</control>
+			<control type="image">
+				<description>background top image</description>
+				<posx>0</posx>
+				<posy>39</posy>
+				<width>168</width>
+				<height>26</height>
+				<texture>dialogs/context_bottom.png</texture>
+			</control>
+			<control type="button" id="995">
+				<description>Share button</description>
+				<posx>0</posx>
+				<posy>0</posy>
+				<width>168</width>
+				<height>39</height>
+				<label>Share</label>
+				<textcolor>context</textcolor>
+				<focusedcolor>FFdfdfdf</focusedcolor>
+				<texturenofocus>dialogs/context_nofocus.png</texturenofocus>
+				<texturefocus>dialogs/context_highlight.png</texturefocus>
+				<align>center</align>
+				<font>Font_Reg19</font>
+				<pulseonselect>no</pulseonselect>
+				<textoffsety>8</textoffsety>
+				<onclick>RunScript(script.module.sharesocial,1,skin.aeon.nox,Confluence,$INFO[ListItem.FileExtension],$INFO[Listitem.PicturePath],$INFO[Listitem.Title],$INFO[Container.FolderPath],$INFO[ListItem.FileName],$INFO[Listitem.Label],$INFO[ListItem.FileNameAndPath])</onclick>
+
+				<onleft>996</onleft>
+				<onright>996</onright>
+				<onup>996</onup>
+				<ondown>996</ondown>
+			</control>
+		</control>
+    <control type="button" id="1000">
+      <description>button template</description>
+      <posx>0</posx>
+      <posy>0</posy>
+      <height>39</height>
+      <width>308</width>
+      <textcolor>context</textcolor>
+      <focusedcolor>FFdfdfdf</focusedcolor>
+      <texturenofocus>dialogs/context_nofocus.png</texturenofocus>
+      <texturefocus>dialogs/context_highlight.png</texturefocus>
+      <align>center</align>
+      <font>Font_Reg19</font>
+      <pulseonselect>no</pulseonselect>
+      <textoffsety>8</textoffsety>
+    </control>
+  </controls>
+</window>

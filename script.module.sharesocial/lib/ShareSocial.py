@@ -1,22 +1,24 @@
 # -*- coding: utf-8 -*-
 import xbmcaddon, xbmc, xbmcgui #@UnresolvedImport
-import os, sys, urllib2, traceback
+import os, sys, urllib2, traceback, re, time
+import iso8601
 
 __author__ = 'ruuk'
 __url__ = 'http://code.google.com'
 __date__ = '02-13-2012'
 __version__ = '0.1.0'
-__addon__ = xbmcaddon.Addon(id='script.module.social')
+__addon__ = xbmcaddon.Addon(id='script.module.sharesocial')
 __lang__ = __addon__.getLocalizedString
 
 APILEVEL = 1
 
 MAIN_PATH = xbmc.translatePath(__addon__.getAddonInfo('profile'))
 TARGETS_PATH = os.path.join(MAIN_PATH,'targets')
-if not os.path.exists(MAIN_PATH): os.makedirs(MAIN_PATH)
+CACHE_PATH = os.path.join(MAIN_PATH,'cache')
+if not os.path.exists(CACHE_PATH): os.makedirs(CACHE_PATH)
 
 def LOG(text):
-	print text
+	xbmc.log('ShareSocial: %s' % text)
 	
 def ERROR(message):
 	LOG(message)
@@ -50,7 +52,7 @@ def fixExtension(content_type,fn):
 		fn = os.path.splitext(fn)[0] + '.' + ext
 		return fn
 	
-def getFile(url,target_file):
+def getFile(url,target_file,progress_callback=None):
 		if not url: return
 		try:
 			request = urllib2.urlopen(url)
@@ -59,7 +61,21 @@ def getFile(url,target_file):
 			LOG('ERROR: urlopen() in getFile() - URL: %s' % url)
 			return ''
 		f = open(target_file,"wb")
-		f.write(request.read())
+		try:
+			total = int(request.info()['content-length'])
+		except:
+			total = 0
+			progress_callback = None
+		chunk = 65536
+		sofar = 0
+		while True:
+			data = request.read(chunk)
+			if not data: break
+			f.write(data)
+			sofar += chunk
+			if progress_callback:
+				if not progress_callback(sofar,total,''): break
+			
 		f.close()
 		return target_file
 
@@ -70,6 +86,151 @@ def doKeyboard(prompt,default='',hidden=False):
 	if not keyboard.isConfirmed(): return None
 	return keyboard.getText()
 
+class ChoiceMenu():
+	def __init__(self,caption):
+		self.caption = caption
+		self.items = []
+		self.display = []
+		self.icons = []
+		
+	def addItem(self,ID,display,icon=None):
+		self.items.append(ID)
+		self.display.append(display)
+		self.icons.append(icon)
+		
+	def getChoiceIndex(self):
+		return xbmcgui.Dialog().select(self.caption,self.display)
+	
+	def getResult(self):
+		idx = self.getChoiceIndex()
+		if idx < 0: return None
+		return self.items[idx]
+
+class EmbeddedChoiceDialog(xbmcgui.WindowXMLDialog):
+	def __init__( self, *args, **kwargs ):
+		self.result = None
+		self.display = kwargs.get('display')
+		self.icons = kwargs.get('icons')
+		self.caption = kwargs.get('caption')
+		xbmcgui.WindowXMLDialog.__init__( self, *args, **kwargs )
+	
+	def onInit(self):
+		items = []
+		for d,i in zip(self.display,self.icons):
+			item = xbmcgui.ListItem(label=d,thumbnailImage=i or '')
+			items.append(item)
+			
+		self.getControl(120).addItems(items)
+		self.getControl(300).setLabel(self.caption)
+		
+	def onAction(self,action):
+		if action == 92 or action == 10:
+			self.close()
+		elif action == 7:
+			self.finish()
+	
+	def onClick( self, controlID ):
+		if controlID == 120:
+			self.finish()
+			
+	def finish(self):
+		self.result = self.getControl(120).getSelectedPosition()
+		self.close()
+		
+	def onFocus( self, controlId ): self.controlId = controlId
+		
+class EmbeddedChoiceMenu(ChoiceMenu):
+	def getResult(self):
+		windowFile = 'ShareSocial-ShareProgressChoiceMenu.xml'
+		w = EmbeddedChoiceDialog(windowFile , xbmc.translatePath(__addon__.getAddonInfo('path')), 'Default',display=self.display,icons=self.icons,caption=self.caption)
+		w.doModal()
+		result = w.result
+		del w
+		if not result: return None
+		return self.items[result]
+		
+	
+class ProgressWindow(xbmcgui.WindowXML):
+	def __init__( self, *args, **kwargs ):
+		self.soFar = 0
+		self.total = 1
+		self.barMax = 642.0
+		self.canceled = False
+		self.bar = None
+		self.barLabel = None
+		self.msgLabel = None
+		self.line1 = ''
+		self.line2 = ''
+		self.line3 = ''
+		self._barhidden = False
+		
+		xbmcgui.WindowXML.__init__( self, *args, **kwargs )
+	
+	def onInit(self):
+		self.bar = self.getControl(200)
+		self.barLabel = self.getControl(201)
+		self.msgLabel = self.getControl(205)
+			
+	def onFocus( self, controlId ):
+		self.controlId = controlId
+		
+	def onAction(self,action):
+		if action == 92 or action == 10:
+			self.doCancel()
+		
+	def onClick( self, controlID ):
+		pass
+	
+	def doCancel(self):
+		self.canceled = True
+		self.barLabel.setLabel()
+		
+	def calcPercent(self,sofar,total):
+		return int((sofar * 100.0)/total)
+	
+	def setIcons(self,source,target):
+		self.getControl(202).setImage(source)
+		self.getControl(203).setImage(target)
+		
+	def create(self,heading,line1='', line2='', line3=''):
+		self.show()
+		self.onInit()
+		self.updateProgress(0, 1, line1, line2, line3)
+	
+	def update(self,percent,line1='', line2='', line3=''):
+		self.updateProgress(percent, 100, line1, line2, line3)
+	
+	def updateProgress(self,sofar,total,line1='', line2='', line3=''):
+		if self.canceled: return
+		self.line1 = line1 or self.line1
+		self.line2 = line2 or self.line2
+		self.line3 = line3 or self.line3
+		barWidth = int((sofar * self.barMax) / total)
+		if barWidth > self.barMax:
+			barWidth = int(self.barMax)
+			pct = 100
+		else:
+			pct = self.calcPercent(sofar,total)
+		self.bar.setWidth(barWidth)
+		self.barLabel.setLabel('%s%%' % pct)
+		self.msgLabel.setLabel('%s[CR]%s[CR]%s' % (self.line1,self.line2,self.line3))
+	
+	def hideBar(self,hide):
+		self._barhidden = hide
+		self.bar.setVisible(not hide)
+		
+	def iscanceled(self):
+		return self.canceled
+	
+	def close(self):
+		xbmcgui.WindowXML.close(self)
+		del self
+
+def openProgress():
+	windowFile = 'ShareSocial-ShareProgress.xml'
+	w = ProgressWindow(windowFile , xbmc.translatePath(__addon__.getAddonInfo('path')), 'Default')
+	return w
+			
 class ShareFailure():
 	def __init__(self,code,reason,error=''):
 		self.code = code
@@ -79,6 +240,78 @@ class ShareFailure():
 	def __nonzero__(self):
 		return False
 	
+def convertTimestampToUnix(timestamp):
+	if isinstance(timestamp,float): return int(timestamp)
+	if isinstance(timestamp,int): return timestamp
+	if timestamp.isdigit(): return int(timestamp)
+	try:
+		return time.mktime(iso8601.parse_date(timestamp).timetuple())
+	except:
+		pass
+	
+	try:
+		offset = 0
+		try: offset = int(re.search('([-+]\d{2}):?\d{2}',timestamp).group(1))
+		except: pass
+		return int(time.mktime(time.strptime(re.sub('\+\d+','',timestamp)))) + (offset * 3600)
+	except:
+		timestamp = int(time.time())
+	return timestamp
+
+class CommentsList():
+	def __init__(self):
+		self.count = 0
+		self.isReplyTo = False
+		self.items = []
+		self._commentsCallback = None
+		self._commentsCallbackData = None
+		
+	def setCallback(self,callback,data):
+		self._commentsCallback = callback
+		self._commentsCallbackData = data
+	
+	def addItem(self,user,usericon,text,timestamp):
+		timestamp = convertTimestampToUnix(timestamp)
+		self.count += 1
+		self.items.append({'user':user,'usericon':usericon,'text':text,'unixtime':timestamp})
+		
+	def getComments(self):
+		if self.items: return
+		if self._commentsCallback:
+			LOG('Getting comments via callback')
+			self.count = 0
+			dialog = xbmcgui.DialogProgress()
+			dialog.create('Getting Comments')
+			dialog.update(0,'Getting comments','Please wait...')
+			try:
+				self._commentsCallback(self,self._commentsCallbackData)
+			except:
+				ERROR('Getting comments failed!')
+			finally:
+				dialog.close()
+				
+		return 
+		
+						
+class FeedProvision():
+	def __init__(self,target):
+		self.target = target
+		self.type = 'feed'
+		self.error = None
+		self.items = []
+	
+	def addItem(self,user,usericon,text,timestamp,textimage,comments=''):
+		timestamp = convertTimestampToUnix(timestamp)
+				
+		self.items.append({'user':user,'usericon':usericon,'text':text,'unixtime':timestamp,'textimage':textimage,'comments':comments})
+		
+	def getCommentsList(self):
+		return CommentsList()
+	
+	def failed(self,error='Unknown'):
+		self.error = error
+		return self
+
 class Share():
 	def __init__(self,sourceID,sharetype):
 		self.sourceID = sourceID
@@ -96,6 +329,31 @@ class Share():
 		self.altitude = 0 # Geo altitude, if available
 		self.message = '' # Default message
 		self.alternates = []
+		
+		self._shareManager = None
+		self._failed = []
+		self._succeeded = []
+		self._error = None
+	
+	def getIcon(self):
+		if self.sourceID.startswith('skin.'): return os.path.join(__addon__.getAddonInfo('path'),'xbmc.png')
+		return xbmcaddon.Addon(id=self.sourceID).getAddonInfo('icon') or ''
+	
+	def failed(self,message='Unknown Reason',error=None):
+		self._failed.append(message)
+		self._error = error
+		return self
+		
+	def succeeded(self,message=''):
+		self._succeeded.append(message)
+		return self
+		
+	def finishedMessage(self):
+		if self._failed: return self._failed[0]
+		if self._succeeded: return self._succeeded[0]
+		
+	def progressCallback(self,*args,**kwargs):
+		return self._shareManager.progressCallback(*args,**kwargs)
 	
 	def getCopy(self):
 		import copy
@@ -113,9 +371,12 @@ class Share():
 		if self.media.startswith('ftp:/'): return True
 		return False
 
-	def askMessage(self):
-		self.message = doKeyboard('Enter Message',self.message) or self.message
+	def askMessage(self,heading='Enter Message'):
+		self.message = doKeyboard(heading,self.message) or self.message
 		
+	def getOptionsMenu(self,caption='Options'):
+		return EmbeddedChoiceMenu(caption)
+	
 	def link(self):
 		return self.page or self.media
 	
@@ -123,20 +384,42 @@ class Share():
 		thumb = use_media and self.media or self.thumbnail
 		return self.html or '<div style="text-align: center; float: left;"><a href="%s"><img src="%s" /><br /><br />%s</a></div>' % (self.link(),thumb,self.title)
 	
-	def share(self):
-		ShareManager().doShare(self)
+	def getLatitude(self):
+		if isinstance(self.latitude,float): return self.latitude
+		try:
+			return float(self.latitude)
+		except:
+			return 0
+		
+	def getLongitude(self):
+		if isinstance(self.longitude,float): return self.longitude
+		try:
+			return float(self.longitude)
+		except:
+			return 0
+	
+	def share(self,withall=False):
+		ShareManager().doShare(self,withall)
 	
 class ShareTarget():
 	def __init__(self,target_data=None):
 		self.addonID = ''
 		self.shareTypes = []
+		self.provideTypes = []
 		self.name = ''
 		self.importPath = ''
 		self.iconPath = ''
 		if target_data: self.fromString(target_data)
 	
+	def getIcon(self):
+		return self.iconPath or xbmcaddon.Addon(id=self.addonID).getAddonInfo('icon') or ''
+		
 	def canShare(self,shareType):
 		if shareType in self.shareTypes: return True
+		return False
+	
+	def canProvide(self,provideType):
+		if provideType in self.provideTypes: return True
 		return False
 	
 	def getIconPath(self):
@@ -153,16 +436,18 @@ class ShareTarget():
 		self.addonID = kvdict.get('addonID')
 		self.name = kvdict.get('name')
 		self.importPath = kvdict.get('importPath')
-		self.shareTypes = kvdict.get('shareTypes').split(',')
+		self.shareTypes = kvdict.get('shareTypes','').split(',')
+		self.provideTypes = kvdict.get('provideTypes','').split(',')
 		self.iconPath = kvdict.get('iconPath')
 		return self
 	
 	def toString(self):
-		return 'addonID=%s:::name=%s:::importPath=%s:::shareTypes=%s:::iconPath=%s' % (	self.addonID,
-																					self.name,
-																					self.importPath,
-																					','.join(self.shareTypes),
-																					self.iconPath )
+		return 'addonID=%s:::name=%s:::importPath=%s:::shareTypes=%s:::provideTypes=%s:::iconPath=%s' % (	self.addonID,
+																											self.name,
+																											self.importPath,
+																											','.join(self.shareTypes),
+																											','.join(self.provideTypes),
+																											self.iconPath )
 		
 	def getModule(self):
 		module = os.path.basename(self.importPath)
@@ -171,27 +456,53 @@ class ShareTarget():
 		importPath = os.path.join(addonPath,subPath)
 		sys.path.insert(0,importPath)
 		try:
-			return __import__(module)
+			mod = __import__(module)
+			reload(mod)
+			del sys.path[0]
+			return mod
 		except ImportError:
-			LOG('Error importing module %s for share target %s. Unregistering target.' % (self.importPath,self.addonID))
-			self.unRegisterShareTarget(self)
+			ERROR('Error importing module %s for share target %s.' % (self.importPath,self.addonID))
+			#self.unRegisterShareTarget(self)
 			return ShareFailure('targetImportFailure','Failed To Import Share Target')
 		except:
-			error = ERROR('handOffShare(): Error during target sharing import')
+			error = ERROR('ShareTarget.getModule(): Error during target sharing import')
 			return ShareFailure('targetImportError','Error In Target Sharing Import: %s' % error,error)
-		finally:
-			del sys.path[0]
+		
+	def provide(self,provideType):
+		mod = self.getModule()
+		if not mod: return None
+		
+		if provideType == 'feed':
+			getObject = FeedProvision(self)
+		try:
+			return mod.doShareSocialProvide(getObject)
+		except:
+			err = ERROR('ShareTarget.provide(): Error in target doShareSocialProvide() function')
+			return getObject.failed(err)
+		
+	def getProvideCall(self):
+		mod = self.getModule()
+		if not mod: return None
+		return mod.doShareSocialProvide
+		
+	def provideWithCall(self,provideType,provideCall):
+		if provideType == 'feed':
+			getObject = FeedProvision(self)
+		try:
+			return provideCall(getObject)
+		except:
+			err = ERROR('ShareTarget.provideWithCall(): Error in target doShareSocialProvide() function')
+			return getObject.failed(err)
 			
 	def doShare(self,share):
 		mod = self.getModule()
-		if not mod: return mod
+		if not mod: return share.failed(mod.reason)
 		
 		try:
-			mod.doShareSocial(share)
+			return mod.doShareSocial(share)
 		except:
-			error = ERROR('handOffShare(): Error in target doShareSocial() function')
-			return ShareFailure('targetImportError','Error In Target doShareSocial() Function: %s' % error,error)
-		return self
+			ERROR('ShareTarget.doShare(): Error in target doShareSocial() function')
+			return share.failed('Error in target doShareSocial() function')
 	
 class ShareManager():
 	sharetypes = {	'image':1,
@@ -203,37 +514,59 @@ class ShareManager():
 					'audiofile':1,
 					'binaryfile':1,
 					'html':1,
-					'text':1}
+					'text':1,
+					'status':1}
 	
 	def __init__(self):
+		self.dialog = None
 		self.readTargets()
 	
-	def doShare(self,share):
-		target = self.askForTarget(share)
-		if not target: return ShareFailure('userAbort','User Abort')
-		return target.doShare(share)
+	def doShare(self,share,withall=False):
+		try:
+			self.dialog = openProgress()
+			self.dialog.create('Sharing','Starting...')
+			self.dialog.setIcons(share.getIcon(),'')
+			share = self._doShare(share,withall)
+		finally:
+			self.dialog.close()
+	
+		if not share._failed:
+			xbmcgui.Dialog().ok('Finished','Sharing complete!',share.finishedMessage())
+			LOG('Sharing: Done')
+			return True
+		else:
+			xbmcgui.Dialog().ok('Failed','Sharing failed!',share.finishedMessage())
+			LOG('Sharing: Failed - %s' % share.finishedMessage())
+			return False
+	
+	def _doShare(self,share,withall=False):
+		share._shareManager = self
+		target = self.askForTarget(share,withall)
+		if not target: return share.failed('User Abort')
+		if isinstance(target,list):
+			for t in target:
+				self.dialog.setIcons(share.getIcon(),t.getIcon())
+				t.doShare(share)
+			return share
+		else:
+			self.dialog.setIcons(share.getIcon(),target.getIcon())
+			return target.doShare(share)
 		
-	def askForTarget(self,share):
-		options = []
-		optionIDs = []
+	def askForTarget(self,share,withall=False):
+		menu = EmbeddedChoiceMenu('Share to:')
 		for tkey in self.targets:
 			target = self.targets[tkey]
-			if target.addonID != share.sourceID:
+			if target.addonID != share.sourceID or share.sourceID == 'script.module.sharesocial':
 				if target.canShare(share.shareType):
-					options.append(target.name)
-					optionIDs.append(target.addonID)
+					menu.addItem(target,target.name,target.getIcon())
 				else:
 					for alt in share.alternates:
 						if target.canShare(alt.shareType):
-							options.append(target.name)
-							optionIDs.append(target.addonID)
+							menu.addItem(target,target.name,target.getIcon())
 							break
-		idx = xbmcgui.Dialog().select("Share to:",options)
-		if idx < 0:
-			return None
-		else:
-			option = optionIDs[idx]
-		return self.targets[option]
+		if withall:
+			menu.addItem(menu.items[:],'-All-')
+		return menu.getResult()
 	
 	def shareTargetAvailable(self,share_type,sourceID):
 		for target in self.targets.values():
@@ -248,6 +581,13 @@ class ShareManager():
 		if target.addonID in self.targets:
 			del self.targets[target.addonID]
 			self.writeTargets()
+	
+	def getProviders(self,provideType):
+		providers = []
+		for t in self.targets.values():
+			if t.canProvide(provideType):
+				providers.append(t)
+		return providers
 	
 	def readTargets(self):
 		self.targets = {}
@@ -267,7 +607,68 @@ class ShareManager():
 		tf = open(TARGETS_PATH,'w')
 		tf.write(out)
 		tf.close()
-			
-			
 		
+	def progressCallback(self,level,total,message='Please wait...',m2='',m3='',hide=None):
+		total = total or 1
+		if not self.dialog: return True
+		if self.dialog.iscanceled(): return False
+		if hide is not None: self.dialog.hideBar(hide)
+		self.dialog.updateProgress(level,total,message,m2,m3)
+		return True
+			
+def copyGenericModImages(skinPath):
+	import shutil
+	for f in ('ShareSocial-ButtonFocus.png','ShareSocial-CloseButtonFocus.png','ShareSocial-CloseButton.png','ShareSocial-DialogBack.png'):
+		src = os.path.join(__addon__.getAddonInfo('path'),'skinmods',f)
+		dst = os.path.join(skinPath,'media',f)
+		shutil.copy(src, dst)
+				
+def installSkinMod(restore=False):
+	skinPath = xbmc.translatePath('special://skin')
+	if skinPath.endswith(os.path.sep): skinPath = skinPath[:-1]
+	currentSkin = os.path.basename(skinPath)
+	dialogPath = os.path.join(skinPath,'720p','DialogContextMenu.xml')
+	backupPath = os.path.join(skinPath,'720p','DialogContextMenu.xml.SSbackup')
+	sourcePath = os.path.join(__addon__.getAddonInfo('path'),'skinmods',currentSkin + '.xml')
+	fallbackSourcePath = os.path.join(__addon__.getAddonInfo('path'),'skinmods','default.xml')
+	LOG('Current skin: %s' % currentSkin)
+	LOG('Skin path: %s' % skinPath)
+	LOG('Target path: %s' % dialogPath)
+	LOG('Source path: %s' % sourcePath)
+	if restore:
+		if not os.path.exists(backupPath):
+			LOG('Asked to restore skin file, mod not installed or backup missing')
+			xbmcgui.Dialog().ok('Undo','Mod not installed or','backup file is missing')
+			return
+		LOG('Restoring skin file')
+		os.remove(dialogPath)
+		open(dialogPath,'w').write(open(backupPath,'r').read())
+		#Remove added files
+		os.remove(backupPath)
+		for f in ('ShareSocial-ButtonFocus.png','ShareSocial-CloseButtonFocus.png','ShareSocial-CloseButton.png','ShareSocial-DialogBack.png'):
+			dst = os.path.join(skinPath,'media',f)
+			if os.path.exists(dst): os.remove(dst)
+
+		xbmcgui.Dialog().ok('Undo','Mod successfully removed!')
+	else:
+		if os.path.exists(sourcePath):
+			yesno = xbmcgui.Dialog().yesno('Mod Install','Matching mod found!','Click Yes to install,','click No to install generic mod')
+			if not yesno:
+				copyGenericModImages(skinPath)
+				sourcePath = fallbackSourcePath
+		else:
+			yesno = xbmcgui.Dialog().yesno('Mod Install','Matching mod not found!','Install generic mod?')
+			if not yesno:
+				xbmcgui.Dialog().ok('Mod Install','Mod not installed.')
+				return
+			copyGenericModImages(skinPath)
+			sourcePath = fallbackSourcePath
+		
+		if not os.path.exists(backupPath):
+			LOG('Creating backup of original skin file: ' + backupPath)
+			open(backupPath,'w').write(open(dialogPath,'r').read())
+		
+		os.remove(dialogPath)
+		open(dialogPath,'w').write(open(sourcePath,'r').read())
+		xbmcgui.Dialog().ok('Mod Install','Mod successfully installed!')
 	
