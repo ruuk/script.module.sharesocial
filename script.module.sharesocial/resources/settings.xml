@@ -5,4 +5,7 @@
     <setting label="Install Context Menu Mod" type="action" action="RunScript(script.module.sharesocial,install_skin_mod)"/>
     <setting label="Undo Context Menu Mod" type="action" action="RunScript(script.module.sharesocial,undo_skin_mod)"/>
   </category>
+  <category label="Twitter">
+    <setting label="Add Twitter User" type="action" option="close" action="RunScript(script.module.sharesocial,add_twitter_user)"/>
+  </category>
 </settings>

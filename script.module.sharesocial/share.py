@@ -1,4 +1,4 @@
-import os, sys, traceback, threading, time
+import os, sys, traceback, threading, time, binascii
 import xbmc, xbmcgui #@UnresolvedImport
 from lib import ShareSocial
 import urllib
@@ -49,68 +49,192 @@ class ArrayPool():
 			names.append(j.remember.name)
 			jobs[j.remember.name] = j
 		while jobs:
+			if dialog.iscanceled():
+				for j in self.jobs:
+					if j.isAlive(): break
+				else:
+					return None
 			for k in jobs.keys():
 				j = jobs[k]
 				if not j.isAlive():
+					del jobs[k]
 					sofar += 1
 					if j.result:
-						names[names.index(j.remember.name)] = '[COLOR FF00FF00]%s[/COLOR]' % j.remember.name 
+						if j.result._error:
+							LOG('Failed to get feed %s: %s' % (j.remember.name,j.result._error))
+							if j.result._error == 'NOUSERS':
+								names[names.index(j.remember.name)] = '[COLOR FFFFFF00]%s[/COLOR]' % j.remember.name
+							else:
+								names[names.index(j.remember.name)] = '[COLOR FFFF0000]%s[/COLOR]' % j.remember.name
+						else:
+							names[names.index(j.remember.name)] = '[COLOR FF00FF00]%s[/COLOR]' % j.remember.name	
 					else:
 						names[names.index(j.remember.name)] = '[COLOR FFFF0000]%s[/COLOR]' % j.remember.name
-					del jobs[k]
 			dialog.update(int((sofar*100.0)/total),' - '.join(names))
 			time.sleep(0.2)
 		for j in self.jobs: results.append(j.result)
 		return results
+
+class FeedListItem():
+	def __init__(self,feeditem):
+		self.item = xbmcgui.ListItem()
+		self.feeditem = feeditem
+		self.timestamp = 0
+		self.fillItem()
+		
+	def fillItem(self):
+		r = self.feeditem
+		text = r.get('text','').replace('\t','  ').replace('\n','[CR]')
+		username = r.get('user')
+		userimage = r.get('usericon')
+		self.timestamp = r.get('unixtime')
+		textimage = extractEmbeddedURL(r.get('textimage',''))
+		item = self.item
+		item.setThumbnailImage(userimage)
+		item.setLabel('[CR]' + text)
+		item.setLabel2('[CR][COLOR FF880000]%s[/COLOR]' % username)
+		item.setProperty('picture',textimage)
+		item.setProperty('usericon',(r.get('client') or {}).get('photo',''))
+		comments = buildCommentsDisplay('[CR][COLOR FF880000]%s: [/COLOR]%s' % (username,text),r.comments)
+		item.setProperty('comments',comments)
+		
+	def __getattr__(self, prop):
+		return self.item.__getattribute__(prop)
+		
+class ExtendedControlList():
+	def __init__(self,window,controlID):
+		self.control = window.getControl(controlID)
+		self.items = []
+		
+	def getSelectedItem(self):
+		pos = self.control.getSelectedPosition()
+		return self.items[pos]
+		
+	def addItem(self,item):
+		self.control.addItem(item.item)
+		self.items.append(item)
+	
+	def addItems(self,items):
+		for item in items:
+			self.add(item)
+	
+	def reset(self):
+		self.items = []
+		self.control.reset()
+
+def extractEmbeddedURL(url):
+	new = urllib.unquote(url.split('http',1)[-1])
+	if 'http://' in new:
+		url = 'http://' + new.split('http://',1)[-1]
+	elif 'https://' in new:
+		url = 'https://' + new.split('https://',1)[-1]
+	else:
+		return url
+	if url.endswith('.jpg'): return url
+	if url.endswith('.gif'): return url
+	if '.jpg' in url: return url.split('.jpg',1)[0] + '.jpg'
+	if '.gif' in url: return url.split('.gif',1)[0] + '.gif'
+	return url
+	
+def buildCommentsDisplay(msg,commsObj):
+	ret = msg + '[CR][CR]'
+	if not commsObj: return ret
+	if commsObj.items:
+		if commsObj.count > len(commsObj.items): ret += '[CR][COLOR FF666666][--- Click to view all %s comments ---][/COLOR][CR][CR][CR]' % commsObj.count
+		for c in commsObj.items:
+			ret += '[COLOR FF008800]%s:[/COLOR] %s[CR][CR]' % (c.get('user',''),c.get('text',''))
+	else:
+		if commsObj.count:
+			if commsObj.isReplyTo:
+				ret += 'Click to view the target status of this reply.'
+			else:
+				ret += '[COLOR FF666666][--- %s comments - click to view ---][/COLOR]' % commsObj.count
+	return ret
 	
 class FeedWindow(xbmcgui.WindowXML):
 	def __init__( self, *args, **kwargs ):
 		self.feeds = ShareSocial.ShareManager().getProviders('feed')
 		self.started = False
+		self.provisions = []
 		self.items = []
+		self.saveFile = os.path.join(ShareSocial.MAIN_PATH,'FeedData')
+		self.feedList = None
 		xbmcgui.WindowXML.__init__( self, *args, **kwargs )
 
+	def shouldRefresh(self,last):
+		return time.time() - last > 300
+	
 	def onInit(self):
-		if not self.started: self.fillFeedList()
+		if self.started: return
+		self.feedList = ExtendedControlList(self,120)
+		try:
+			last = self.load()
+		except:
+			ERROR('Could not load feeds')
+			last = 0
+		if last: self.fillFeedList(self.provisions)
+		if self.shouldRefresh(last): self.fillFeedList()
+		self.setFocusId(120)
 		self.started = True
 		
-	def extractEmbeddedURL(self,url):
-		new = urllib.unquote(url.split('http',1)[-1])
-		if 'http://' in new:
-			url = 'http://' + new.split('http://',1)[-1]
-		elif 'https://' in new:
-			url = 'https://' + new.split('https://',1)[-1]
-		else:
-			return url
-		if url.endswith('.jpg'): return url
-		if url.endswith('.gif'): return url
-		if '.jpg' in url: return url.split('.jpg',1)[0] + '.jpg'
-		if '.gif' in url: return url.split('.gif',1)[0] + '.gif'
-		return url
+	def save(self):
+		sections = [str(int(time.time()))]
+		for p in self.provisions:
+			sections.append(p.toString())
+		out = '\n@--SECTION--@\n'.join(sections)
+		f = open(self.saveFile,'w')
+		f.write(out)
+		f.close()
 		
-			
-	def fillFeedList(self):
+	def load(self):
+		f = open(self.saveFile,'r')
+		data = f.read()
+		f.close()
+		
+		sections = data.split('\n@--SECTION--@\n')
+		first = sections.pop(0)
+		unixtime = int(first)
+		for section in sections:
+			fp = ShareSocial.FeedProvision().fromString(section)
+			self.provisions.append(fp)
+		return unixtime
+		
+	def getFeedUserIDs(self,feed):
+		users = ShareSocial.getSetting('feed_users_' + feed.addonID,[])
+		IDs = []
+		for u in users:
+			IDs.append(self.decodeUser(u).get('id'))
+		return IDs
+	
+	def fillFeedList(self,results=None):
+		#TODO: clean this up so I don't need this sorta crap
+		passed_results = results and True or False
 		if not self.feeds: return
-		#TODO: Do each feed in a thread 
 		items = {}
 		ct = 1
-		pool = ArrayPool()
-		for f in self.feeds:
-			pcall = f.getProvideCall()
-			pool.addJob(f.provideWithCall,f,'feed',pcall)
+		if not results:
+			blocked = ShareSocial.getSetting('blocked_feeds',[])
+			pool = ArrayPool()
+			for f in self.feeds:
+				if f.addonID in blocked: continue
+				pcall = f.getProvideCall()
+				pool.addJob(f.provideWithCall,f,'feed',pcall,self.getFeedUserIDs(f))
 		fct = len(self.feeds)
 		afterpct = int((fct * 100.0) / (fct + 1))
 		left = float(100 - afterpct)
 		dialog = xbmcgui.DialogProgress()
+		dialog.create('Getting Feeds')
 		try:
-			results = pool.getResult(dialog)
+			if not results:
+				results = pool.getResult(dialog)
+				self.provisions = results
 			c=0
 			for result in results:
-				if not result or result.error:
+				if not result or result._error:
 					if result:
-						LOG('No result for feed: %s - %s' % (result.target.name,result.error))
+						LOG('No result for feed: %s - %s' % (result.target.name,result._error))
 					else:
-						LOG('No result for feed' )
+						LOG('No result for feed')
 					c+=1
 					continue
 				lastpct = int((c * left) / fct)
@@ -119,55 +243,26 @@ class FeedWindow(xbmcgui.WindowXML):
 				#print '%s : %s' % (result.target.name, feedIcon)
 				c+=1
 				for r in result.items:
-					text = r.get('text','').replace('\t','  ').replace('\n','[CR]')
-					username = r.get('user')
-					userimage = r.get('usericon')
-					timestamp = r.get('unixtime')
-					textimage = self.extractEmbeddedURL(r.get('textimage'))
-					item = xbmcgui.ListItem()
-					item.setThumbnailImage(userimage)
-					item.setLabel('[CR]' + text)
-					item.setLabel2('[CR][COLOR FF880000]%s[/COLOR]' % username)
-					item.setProperty('picture',textimage)
+					item = FeedListItem(r)
 					item.setProperty('feedicon',feedIcon)
-					comments = self.buildCommentsDisplay('[CR][COLOR FF880000]%s: [/COLOR]%s' % (username,text),r.get('comments'))
-					item.setProperty('comments',comments)
-					items[timestamp + (1.0/ct)] = (item,r) #add decimal to make unique
+					items[item.timestamp + (1.0/ct)] = item #add decimal to make unique
 					ct+=1
 			
 			keys = items.keys()
 			keys.sort(reverse=True)
-			wlist = self.getControl(120)
-			wlist.reset()
-			self.items = []
-			for k in keys:
-				wlist.addItem(items[k][0])
-				self.items.append(items[k][1])
+			self.feedList.reset()
+			for k in keys: self.feedList.addItem(items[k])
+			if not passed_results: self.save()
 		finally:
 			dialog.close()
 		
 	def itemClicked(self):
-		idx = self.getControl(120).getSelectedPosition()
-		item = self.getControl(120).getListItem(idx)
-		r = self.items[idx]
-		commsObj = r.get('comments')
+		item = self.feedList.getSelectedItem()
+		f = item.feeditem
+		commsObj = f.comments
 		if not commsObj: return
 		commsObj.getComments()
-		item.setProperty('comments',self.buildCommentsDisplay('[CR][COLOR FF880000]%s: [/COLOR]%s' % (r.get('user'),r.get('text','')),commsObj))
-	
-	def buildCommentsDisplay(self,msg,commsObj):
-		ret = msg + '[CR][CR]'
-		if not commsObj: return ret
-		if commsObj.items:
-			for c in commsObj.items:
-				ret += '[COLOR FF008800]%s:[/COLOR] %s[CR][CR]' % (c.get('user',''),c.get('text',''))
-		else:
-			if commsObj.count:
-				if commsObj.isReplyTo:
-					ret += 'Click to view the target status of this reply.'
-				else:
-					ret += '%s comments - click to view.' % commsObj.count
-		return ret
+		item.setProperty('comments',buildCommentsDisplay('[CR][COLOR FF880000]%s: [/COLOR]%s' % (f.get('user'),f.get('text','')),commsObj))
 				
 	def onFocus( self, controlId ):
 		self.controlId = controlId
@@ -184,13 +279,148 @@ class FeedWindow(xbmcgui.WindowXML):
 		if controlID == 120:
 			self.itemClicked()
 	
+	def setUser(self):
+		feed = True
+		while feed:
+			menu = ShareSocial.ChoiceMenu('Add Users: Choose Feed')
+			for f in self.feeds:
+				show = ''
+				users = ShareSocial.getSetting('feed_users_' + f.addonID,[])
+				if users:
+					sh = []
+					for u in users:
+						sh.append(self.decodeUser(u).get('name','ERROR'))
+					show = ' (%s)' % ', '.join(sh)
+				menu.addItem(f,f.name + show)
+			feed = menu.getResult()
+			if not feed: return
+			submenu = ShareSocial.ChoiceMenu('Add Users: Choose User')
+			for u in feed.functions().getUsers():
+				submenu.addItem(u,u.get('name','ERROR'))
+			user = submenu.getResult()
+			if not user: return
+			self.setFeedUser(feed, user)
+		
+	def removeUser(self):
+		feed = True
+		while feed:
+			menu = ShareSocial.ChoiceMenu('Remove Users: Choose Feed')
+			for f in self.feeds:
+				show = ''
+				users = ShareSocial.getSetting('feed_users_' + f.addonID,[])
+				if not users: continue
+				
+				sh = []
+				us = []
+				for u in users:
+					user = self.decodeUser(u)
+					sh.append(user.get('name','ERROR'))
+					us.append(user)
+				show = ' (%s)' % ', '.join(sh)
+				menu.addItem((f,us),f.name + show)
+			
+			if not menu.items:
+				xbmcgui.Dialog().ok('No Users','No users to remove :)')
+				return
+				
+			feed_users = menu.getResult()
+			if not feed_users: return
+			feed, users = feed_users
+			submenu = ShareSocial.ChoiceMenu('Remove Users: Choose User')
+			for u in users:
+				submenu.addItem(u,u.get('name','ERROR'))
+			user = submenu.getResult()
+			if not user: return
+			self.removeFeedUser(feed, user)
+		
+	def decodeUser(self,data):
+		return ShareSocial.dictFromString(binascii.unhexlify(data))
+		
+	def encodeUser(self,user):
+		return binascii.hexlify(ShareSocial.dictToString(user))
+			
+	def setFeedUser(self,feed,user):
+		key = 'feed_users_' + feed.addonID
+		users = ShareSocial.getSetting(key,[])
+		for u in users:
+			if user.get('id') == self.decodeUser(u).get('id'): return
+		users.append(self.encodeUser(user))
+		ShareSocial.setSetting(key,users)
+		
+	def removeFeedUser(self,feed,user):
+		key = 'feed_users_' + feed.addonID
+		users = ShareSocial.getSetting(key,[])
+		i = 0
+		for u in users:
+			if self.decodeUser(u).get('id') == user.get('id'):
+				users.pop(i)
+				ShareSocial.setSetting(key,users)
+				return
+			i+=1
+		
+	def manageFeedsMenu(self):
+		menu = ShareSocial.ChoiceMenu('Feed Options')
+		menu.addItem('show_hide', 'Show/Hide Feeds')
+		menu.addItem('add_users','Add Users To Feed')
+		menu.addItem('remove_users','Remove Users From Feed')
+		res = True
+		while res:
+			res = menu.getResult()
+			if not res: return
+			
+			if		res == 'show_hide': self.showHideFeedMenu()
+			elif 	res == 'add_users': self.setUser()
+			elif	res == 'remove_users': self.removeUser()
+		
+	def showHideFeedMenu(self):
+		feed = True
+		while feed:
+			menu = ShareSocial.ChoiceMenu('Toggle Visibility')
+			feedlist = ShareSocial.getSetting('blocked_feeds',[])
+			for f in self.feeds:
+				blocked = ''
+				if f.addonID in feedlist: blocked = ' [HIDDEN]'
+				menu.addItem(f, f.name + blocked, f.iconPath)
+			feed = menu.getResult()
+			if not feed: return
+			if feed.addonID in feedlist:
+				self.showFeed(feed)
+			else:
+				self.hideFeed(feed)
+		
+	def hideFeed(self,feed):
+		feedlist = ShareSocial.getSetting('blocked_feeds',[])
+		if feed.addonID in feedlist: return
+		feedlist.append(feed.addonID)
+		ShareSocial.setSetting('blocked_feeds',feedlist)
+		
+	def showFeed(self,feed):
+		feedlist = ShareSocial.getSetting('blocked_feeds',[])
+		if feed.addonID in feedlist: feedlist.pop(feedlist.index(feed.addonID))
+		ShareSocial.setSetting('blocked_feeds',feedlist)
+		
 	def doContextMenu(self):
 		menu = ShareSocial.ChoiceMenu('Options')
 		menu.addItem('update_status','Update Status')
+		menu.addItem('refresh','Refresh Feeds')
+		menu.addItem('manage_feeds','Manage Feeds')
+		menu.addItem('settings','Settings')
+		f = self.feedList.getSelectedItem().feeditem
+		if f.share and ShareSocial.shareTargetAvailable(f.share.shareType,'script.module.sharesocial'):
+			menu.addItem(None,None)
+			menu.addItem('share','Share %s...' % f.share.shareType)
 		result = menu.getResult()
 		if not result: return
 		if result == 'update_status':
 			updateStatus()
+		elif result == 'refresh':
+			self.fillFeedList()
+		elif result == 'manage_feeds':
+			self.manageFeedsMenu()
+		elif result == 'settings':
+			ShareSocial.__addon__.openSettings() #@UndefinedVariable
+		elif result == 'share':
+			f.share.share()
 		
 def openFeedWindow():
 	windowFile = 'ShareSocial-Feed.xml'
@@ -366,12 +596,19 @@ def updateStatus():
 	share.askMessage('Enter Status Message')
 	if not share.message: return
 	share.share(True)
+	
+def addTwitterUser():
+	from twitter import TwitterSession
+	TwitterSession(add_user=True)
+	
 if __name__ == '__main__':
 	if len(sys.argv) > 1:
 		if sys.argv[1] == 'install_skin_mod':
 			ShareSocial.installSkinMod()
 		elif sys.argv[1] == 'undo_skin_mod':
 			ShareSocial.installSkinMod(True)
+		elif sys.argv[1] == 'add_twitter_user':
+			addTwitterUser()
 		else:
 			processShare()
 	else:

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import xbmcaddon, xbmc, xbmcgui #@UnresolvedImport
-import os, sys, urllib2, traceback, re, time
+import os, sys, urllib2, traceback, re, time, binascii
 import iso8601
 
 __author__ = 'ruuk'
@@ -25,6 +25,19 @@ def ERROR(message):
 	traceback.print_exc()
 	return str(sys.exc_info()[1])
 
+def getSetting(key,default=None):
+	string = __addon__.getSetting(key)
+	if not string: return default
+	if isinstance(default,list): return string.split(',')
+	if isinstance(default,int): return int(string)
+	if isinstance(default,float): return float(string)
+	return string
+
+def setSetting(key,value):
+	if isinstance(value,list): value = ','.join(value)
+	if not hasattr(value,'encode'): value = unicode(value)
+	__addon__.setSetting(key,value)
+	
 def getShare(source,sharetype):
 	return Share(source,sharetype)
 
@@ -94,10 +107,14 @@ class ChoiceMenu():
 		self.icons = []
 		
 	def addItem(self,ID,display,icon=None):
+		if not ID: return self.addSep()
 		self.items.append(ID)
 		self.display.append(display)
 		self.icons.append(icon)
 		
+	def addSep(self):
+		pass
+	
 	def getChoiceIndex(self):
 		return xbmcgui.Dialog().select(self.caption,self.display)
 	
@@ -146,7 +163,7 @@ class EmbeddedChoiceMenu(ChoiceMenu):
 		w.doModal()
 		result = w.result
 		del w
-		if not result: return None
+		if result == None: return None
 		return self.items[result]
 		
 	
@@ -258,16 +275,81 @@ def convertTimestampToUnix(timestamp):
 		timestamp = int(time.time())
 	return timestamp
 
+def valToString(val):
+	if hasattr(val,'encode'):
+		try:
+			return val.encode('utf-8')
+		except:
+			LOG('valToString() encode error')
+			return val
+	return str(val).encode('utf-8')
+
+def dictFromString(data,val_is_hex=True):
+	if not data: return {}
+	theDict = {}
+	for keyval in data.split(','):
+		key,val = keyval.split('=',1)
+		if key.startswith('dict___'):
+			key = key[7:]
+			val = dictFromString(binascii.unhexlify(val),val_is_hex)
+			theDict[key] = val
+		else:
+			if val_is_hex:
+				theDict[key] = binascii.unhexlify(val)
+			else:
+				theDict[key] = val.decode('utf-8')
+	return theDict
+
+def dictToString(data_dict):
+	if not data_dict: return ''
+	ret = []
+	try:
+		for key,val in data_dict.items():
+			if isinstance(val,dict):
+				val = dictToString(val)
+				key = 'dict___' + key 
+			ret.append('%s=%s' % (key,binascii.hexlify(valToString(val))))
+	except:
+		print data_dict
+		raise
+	return ','.join(ret)
+
+class FeedItem(dict):
+	def __init__(self, *args, **kwargs ):
+		dict.__init__(self, *args, **kwargs )
+		self.share = None
+		self.comments = None
+		
+	def toString(self):
+		ret = []
+		if self.comments: ret.append('comments=%s' % binascii.hexlify(self.comments.toString()))
+		if self.share: ret.append('share=%s' % binascii.hexlify(self.share.toString()))
+		ret.append('data=%s' % binascii.hexlify(dictToString(self)))
+		return ','.join(ret)
+	
+	def fromString(self,kv_list,target=None):
+		for kv in kv_list.split(','):
+			key,val = kv.split('=',1)
+			val = binascii.unhexlify(val)
+			if key == 'data': self.update(dictFromString(val))
+			elif key == 'share': self.share = Share().fromString(val)
+			elif key == 'comments': self.comments = CommentsList(target).fromString(val)
+			ut = self.get('unixtime')
+			if ut: self['unixtime'] = int(float(ut))
+		return self
+	
 class CommentsList():
-	def __init__(self):
+	def __init__(self,target=None):
+		self.target = target
 		self.count = 0
 		self.isReplyTo = False
 		self.items = []
-		self._commentsCallback = None
-		self._commentsCallbackData = None
+		self.callbackDict = {}
 		
-	def setCallback(self,callback,data):
-		self._commentsCallback = callback
+	def clear(self):
+		self.items = []
+		
+	def setGetCommentsData(self,data):
 		self._commentsCallbackData = data
 	
 	def addItem(self,user,usericon,text,timestamp):
@@ -276,44 +358,84 @@ class CommentsList():
 		self.items.append({'user':user,'usericon':usericon,'text':text,'unixtime':timestamp})
 		
 	def getComments(self):
-		if self.items: return
-		if self._commentsCallback:
-			LOG('Getting comments via callback')
-			self.count = 0
-			dialog = xbmcgui.DialogProgress()
-			dialog.create('Getting Comments')
-			dialog.update(0,'Getting comments','Please wait...')
-			try:
-				self._commentsCallback(self,self._commentsCallbackData)
-			except:
-				ERROR('Getting comments failed!')
-			finally:
-				dialog.close()
-				
-		return 
-		
+		if not self.count: return False
+		if len(self.items) >= self.count: return False
+		LOG('Getting comments via callback')
+		self.count = 0
+		dialog = xbmcgui.DialogProgress()
+		dialog.create('Getting Comments')
+		dialog.update(0,'Getting comments','Please wait...')
+		try:
+			self.target.functions().getFeedComments(self)
+		except:
+			ERROR('Getting comments failed!')
+		finally:
+			dialog.close()
+		return True
+					
+	def toString(self):
+		lines = ['count=%s,isReplyTo=%s,callbackDict=%s' % (self.count,self.isReplyTo,binascii.hexlify(dictToString(self.callbackDict)))]
+		for c in self.items:			
+			lines.append(dictToString(c))
+		return '\n'.join(lines)
+	
+	def fromString(self,data):
+		lines = data.splitlines()
+		first = dictFromString(lines.pop(0),False)
+		self.count = int(first.get('count',0))
+		self.isReplyTo = first.get('isReplyTo') == 'True'
+		self.callbackDict = dictFromString(binascii.unhexlify(first.get('callbackDict','')))
+		for line in lines:
+			self.items.append(dictFromString(line))
+		for i in self.items:
+			ut = i.get('unixtime')
+			if ut: i['unixtime'] = int(float(ut))
+		return self
 						
 class FeedProvision():
-	def __init__(self,target):
+	def __init__(self,target=None):
 		self.target = target
 		self.type = 'feed'
-		self.error = None
+		self._error = None
 		self.items = []
 	
-	def addItem(self,user,usericon,text,timestamp,textimage,comments=''):
+	def error(self,error):
+		self._error = error
+		return self
+	
+	def addItem(self,user,usericon,text,timestamp,textimage,comments=None,share=None,client_user={}):
 		timestamp = convertTimestampToUnix(timestamp)
-				
-		self.items.append({'user':user,'usericon':usericon,'text':text,'unixtime':timestamp,'textimage':textimage,'comments':comments})
+		f = FeedItem({'user':user,'usericon':usericon,'text':text,'unixtime':timestamp,'textimage':textimage,'client':client_user})
+		f.comments = comments
+		f.share = share
+		self.items.append(f)
 		
 	def getCommentsList(self):
-		return CommentsList()
+		return CommentsList(self.target)
 	
 	def failed(self,error='Unknown'):
 		self.error = error
 		return self
+	
+	def toString(self):
+		lines = ['target=%s,type=%s' % (self.target.addonID,self.type)]
+		for i in self.items:
+			lines.append(i.toString())
+		return '\n'.join(lines)
+	
+	def fromString(self,data):
+		lines = data.splitlines()
+		first = dictFromString(lines.pop(0),False)
+		addonID = first.get('target',0)
+		self.target = ShareManager().getTarget(addonID)
+		print addonID
+		print self.target
+		for line in lines:
+			self.items.append(FeedItem().fromString(line,self.target))
+		return self
 
 class Share():
-	def __init__(self,sourceID,sharetype):
+	def __init__(self,sourceID=None,sharetype=None):
 		self.sourceID = sourceID
 		self.shareType = sharetype
 		self.html = '' # HTML representation of content (or actual html/text in the case of html/text share)
@@ -329,6 +451,7 @@ class Share():
 		self.altitude = 0 # Geo altitude, if available
 		self.message = '' # Default message
 		self.alternates = []
+		self.callbackData = {}
 		
 		self._shareManager = None
 		self._failed = []
@@ -382,25 +505,126 @@ class Share():
 	
 	def asHTML(self,use_media=False):
 		thumb = use_media and self.media or self.thumbnail
-		return self.html or '<div style="text-align: center; float: left;"><a href="%s"><img src="%s" /><br /><br />%s</a></div>' % (self.link(),thumb,self.title)
+		html = self.html or '<div style="text-align: center; float: left;"><a href="%s"><img src="%s" /><br /><br />%s</a></div>' % (self.link(),thumb,self.title)
+		print html
+		return html
 	
 	def getLatitude(self):
 		if isinstance(self.latitude,float): return self.latitude
 		try:
-			return float(self.latitude)
+			self.latitude = float(self.latitude)
 		except:
-			return 0
-		
+			self.latitude = 0
+		return self.latitude
+	
 	def getLongitude(self):
 		if isinstance(self.longitude,float): return self.longitude
 		try:
-			return float(self.longitude)
+			self.longitude = float(self.longitude)
 		except:
-			return 0
+			self.longitude =  0
+		return self.longitude
+	
+	def getAltitude(self):
+		if isinstance(self.altitude,float): return self.altitude
+		try:
+			self.altitude = float(self.altitude)
+		except:
+			self.altitude =  0
+		return self.altitude
 	
 	def share(self,withall=False):
+		if self.callbackData:
+			target = ShareManager().getTarget(self.sourceID)
+			target.functions().getShareData(self)
 		ShareManager().doShare(self,withall)
+		
+	def toString(self):
+		d = self.__dict__.copy()
+		for k in d.keys():
+			if k.startswith('_'): d.pop(k)
+		d.pop('alternates')
+		return dictToString(d)
 	
+	def fromString(self,string):
+		d = dictFromString(string)
+		self.__dict__.update(d)
+		return self
+	
+############################################################--------------------####
+#                                                              TargetFunctions              ((o))->
+############################################################--------------------####
+class TargetFunctions():
+	def share(self,share,ID):
+		"""
+			Must return the share by calling either
+			
+			return share.success()
+			return share.failed(message)
+			
+			where message is a message displayable to the user
+		"""
+		return share.failed('Not Handled')
+	
+	def getFeedComments(self,commsObj,post): return commsObj
+	def provide(self,ID): pass
+	def getShareData(self,share): return share
+	def getUsers(self,share=None):
+		"""
+			Must return a list of dicts in the form of
+			{'id':user_id,'name':user_display_name,'photo':user_photo_url}
+			
+			id is REQUIRED and will be (possibly) passed to other functions
+			name is REQUIRED and will be used when showing relevant data to the user
+			photo is OPTIONAL
+			
+		"""
+		return None
+	
+	def setHTTPConnectionProgressCallback(self,share):
+		import httplib, StringIO
+		from array import array
+		
+		def send(self, data):
+			"""Send `data' to the server."""
+			if self.sock is None:
+				if self.auto_open:
+					self.connect()
+				else:
+					raise httplib.NotConnected()
+	
+			if self.debuglevel > 0:
+				print "send:", repr(data)
+			blocksize = 8192
+			total = 1
+			progressCallback = self.progressCallback
+			if not hasattr(data,'read') and not isinstance(data, array):
+				total = len(data)
+				data = StringIO.StringIO(data)
+			elif hasattr(data,'read') and not isinstance(data, array):
+				try:
+					total = int(data.info()['content-length'])
+				except:
+					total = 1
+					progressCallback = None
+			if hasattr(data,'read') and not isinstance(data, array):
+				if self.debuglevel > 0: print "sendIng a read()able"
+				datablock = data.read(blocksize)
+				sofar = len(datablock)
+				while datablock:
+					self.sock.sendall(datablock)
+					if progressCallback:
+						if not progressCallback(sofar,total): break
+					datablock = data.read(blocksize)
+					sofar += blocksize
+			else:
+				self.sock.sendall(data)
+		httplib.HTTPConnection.send = send
+		httplib.HTTPConnection.progressCallback = share.progressCallback
+
+############################################################--------------------####
+#                                                                ShareTarget             ((o))
+############################################################--------------------####
 class ShareTarget():
 	def __init__(self,target_data=None):
 		self.addonID = ''
@@ -409,6 +633,8 @@ class ShareTarget():
 		self.name = ''
 		self.importPath = ''
 		self.iconPath = ''
+		self._functions = None
+		self.user = {}
 		if target_data: self.fromString(target_data)
 	
 	def getIcon(self):
@@ -449,7 +675,7 @@ class ShareTarget():
 																											','.join(self.provideTypes),
 																											self.iconPath )
 		
-	def getModule(self):
+	def getFunctions(self):
 		module = os.path.basename(self.importPath)
 		subPath = os.path.dirname(self.importPath)
 		addonPath = xbmcaddon.Addon(self.addonID).getAddonInfo('path')
@@ -459,7 +685,7 @@ class ShareTarget():
 			mod = __import__(module)
 			reload(mod)
 			del sys.path[0]
-			return mod
+			return mod.doShareSocial()
 		except ImportError:
 			ERROR('Error importing module %s for share target %s.' % (self.importPath,self.addonID))
 			#self.unRegisterShareTarget(self)
@@ -468,42 +694,45 @@ class ShareTarget():
 			error = ERROR('ShareTarget.getModule(): Error during target sharing import')
 			return ShareFailure('targetImportError','Error In Target Sharing Import: %s' % error,error)
 		
+	def functions(self):
+		if self._functions: return self._functions
+		self._functions = self.getFunctions()
+		return self._functions
+	
 	def provide(self,provideType):
-		mod = self.getModule()
-		if not mod: return None
-		
 		if provideType == 'feed':
 			getObject = FeedProvision(self)
 		try:
-			return mod.doShareSocialProvide(getObject)
+			return self.functions().provide(getObject)
 		except:
-			err = ERROR('ShareTarget.provide(): Error in target doShareSocialProvide() function')
+			err = ERROR('ShareTarget.provide(): Error in target provide() function')
 			return getObject.failed(err)
 		
 	def getProvideCall(self):
-		mod = self.getModule()
-		if not mod: return None
-		return mod.doShareSocialProvide
+		return self.functions().provide
 		
-	def provideWithCall(self,provideType,provideCall):
+	def provideWithCall(self,provideType,provideCall,userIDs=None):
 		if provideType == 'feed':
 			getObject = FeedProvision(self)
 		try:
-			return provideCall(getObject)
+			if not userIDs: return provideCall(getObject)
+			for ID in userIDs:
+				provideCall(getObject,ID)
+			return getObject
 		except:
-			err = ERROR('ShareTarget.provideWithCall(): Error in target doShareSocialProvide() function')
+			err = ERROR('ShareTarget.provideWithCall(): Error in target provide() function')
 			return getObject.failed(err)
 			
 	def doShare(self,share):
-		mod = self.getModule()
-		if not mod: return share.failed(mod.reason)
-		
 		try:
-			return mod.doShareSocial(share)
+			return self.functions().share(share,self.user.get('id'))
 		except:
-			ERROR('ShareTarget.doShare(): Error in target doShareSocial() function')
-			return share.failed('Error in target doShareSocial() function')
-	
+			ERROR('ShareTarget.doShare(): Error in target share() function')
+			return share.failed('Error in target share() function')
+
+############################################################--------------------####
+#                                                              ShareManager                      !!
+############################################################--------------------####
 class ShareManager():
 	sharetypes = {	'image':1,
 					'audio':1,
@@ -542,7 +771,7 @@ class ShareManager():
 	def _doShare(self,share,withall=False):
 		share._shareManager = self
 		target = self.askForTarget(share,withall)
-		if not target: return share.failed('User Abort')
+		if not target: return share.failed('User Canceled')
 		if isinstance(target,list):
 			for t in target:
 				self.dialog.setIcons(share.getIcon(),t.getIcon())
@@ -557,16 +786,22 @@ class ShareManager():
 		for tkey in self.targets:
 			target = self.targets[tkey]
 			if target.addonID != share.sourceID or share.sourceID == 'script.module.sharesocial':
-				if target.canShare(share.shareType):
-					menu.addItem(target,target.name,target.getIcon())
-				else:
-					for alt in share.alternates:
-						if target.canShare(alt.shareType):
-							menu.addItem(target,target.name,target.getIcon())
-							break
+				for s in [share] + share.alternates:
+					if target.canShare(s.shareType):
+						users = target.functions().getUsers(share) or [{}]
+						for user in users:
+							show = target.name
+							if user: show = '%s (%s)' % (target.name,user.get('name',''))
+							menu.addItem((target,user),show,target.getIcon())
+						break
+					
 		if withall:
 			menu.addItem(menu.items[:],'-All-')
-		return menu.getResult()
+		target_user = menu.getResult()
+		if not target_user or isinstance(target_user,list): return target_user
+		target, user = target_user
+		target.user = user
+		return target
 	
 	def shareTargetAvailable(self,share_type,sourceID):
 		for target in self.targets.values():
@@ -588,6 +823,9 @@ class ShareManager():
 			if t.canProvide(provideType):
 				providers.append(t)
 		return providers
+	
+	def getTarget(self,addonID):
+		return self.targets.get(addonID)
 	
 	def readTargets(self):
 		self.targets = {}

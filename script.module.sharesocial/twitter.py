@@ -1,9 +1,9 @@
-import xbmc, xbmcgui, xbmcaddon #@UnresolvedImport
+import xbmcaddon #@UnresolvedImport
 from twython import twython
-import binascii, httplib, StringIO, os
-
+import binascii, httplib, StringIO
+from lib import ShareSocial
 from array import array
-#class HTTPConnectionWithProgress(httplib.HTTPConnection):
+
 if True:
 	def send(self, data):
 		"""Send `data' to the server."""
@@ -83,6 +83,12 @@ class TwitterUser():
 		self.oauthSecret = oauth_secret
 		self.name = name
 		self.ID = ID
+		self.photo = ''
+		
+	def getData(self,twit):
+		data = twit.showUser(user_id=self.ID)
+		self.photo = data.get('profile_image_url','')
+		print self.photo
 		
 	def fromOauthDict(self,oauth_dict):
 		self.oauthToken = oauth_dict.get('oauth_token')
@@ -90,30 +96,26 @@ class TwitterUser():
 		self.name = oauth_dict.get('screen_name')
 		self.ID = oauth_dict.get('user_id')
 		return self
-		
-	def fromSaveData(self,ID,data):
-		self.ID = ID
-		data = data.split(',')
-		self.oauthToken = binascii.unhexlify(data[0])
-		self.oauthSecret = binascii.unhexlify(data[1])
-		self.name = binascii.unhexlify(data[2])
-		return self
 	
 	def save(self):
 		addUserToList(self.ID)
-		data = binascii.hexlify(self.oauthToken) + ',' + binascii.hexlify(self.oauthSecret) + ',' + binascii.hexlify(self.name)
+		data = binascii.hexlify(ShareSocial.dictToString(self.__dict__))
 		setSetting('user_data_%s' % self.ID,data)
 		
 	def load(self):
 		data = getSetting('user_data_%s' % self.ID)
-		return self.fromSaveData(self.ID,data)
+		data = ShareSocial.dictFromString(binascii.unhexlify(data))
+		self.__dict__.update(data)
+		return self
 		
 class TwitterSession():
 	consumerKey = '2qKlX9iYmds7w4wLcASQw'
 	consumerSecret = 'M10s7yGPvX1Wvk3KCSE9p9Plq1imqjfODLUwsdPKoU'
-	def __init__(self,user=None):
+	def __init__(self,user=None,add_user=False,ID=None,require_existing_user=False):
+		if add_user: return self.addUser()
 		self.user = user
-		if not user: self.setUser()
+		if ID: self.user = TwitterUser(ID=ID).load()
+		if not self.user: self.setUser(require_existing_user)
 		if not self.user:
 			self.twit = None
 			return
@@ -125,11 +127,14 @@ class TwitterSession():
 		url,html = self.doBrowserAuth(url_dict['auth_url'])
 		print url
 		oauth_token, oauth_verifier = self.extractTokensFromURL(url)
+		if not oauth_token or not oauth_verifier: return False
 		self.twit = twython.Twython(self.consumerKey,self.consumerSecret,oauth_token,oauth_verifier)
 		authorized_tokens = self.twit.get_authorized_tokens()
 		self.user = TwitterUser().fromOauthDict(authorized_tokens)
+		self.user.getData(self.twit)
 		self.user.save()
 		setSetting('last_user',self.user.ID)
+		return True
 		
 	def doBrowserAuth(self,url):
 		from webviewer import webviewer #@UnresolvedImport
@@ -154,14 +159,20 @@ class TwitterSession():
 			LOG("Failed to parse tokens from url: %s" % url)
 			return None,None
 	
-	def setUser(self):
+	def setUser(self,require_existing_user=False):
 		user = getSetting('last_user')
 		if not user:
 			users = getUserList()
 			if users: user = users[0]
-		if not user:
+		if not user and not require_existing_user:
 			self.getAuth()
 			return
 		self.user = TwitterUser(ID=user).load()
+		
+	def addUser(self):
+		if not self.getAuth():
+			import xbmcgui #@UnresolvedImport
+			xbmcgui.Dialog().ok('Failed','Failed to add user!')
+
 
 	
