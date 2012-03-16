@@ -92,6 +92,12 @@ def getFile(url,target_file,progress_callback=None):
 		f.close()
 		return target_file
 
+def clearDirFiles(filepath):
+	if not os.path.exists(filepath): return
+	for f in os.listdir(filepath):
+		f = os.path.join(filepath,f)
+		if os.path.isfile(f): os.remove(f)
+			
 def doKeyboard(prompt,default='',hidden=False):
 	keyboard = xbmc.Keyboard(default,prompt)
 	keyboard.setHiddenInput(hidden)
@@ -533,10 +539,13 @@ class Share():
 			self.altitude =  0
 		return self.altitude
 	
-	def share(self,withall=False):
+	def updateData(self):
 		if self.callbackData:
 			target = ShareManager().getTarget(self.sourceID)
 			target.functions().getShareData(self)
+			
+	def share(self,withall=False):
+		self.updateData()
 		ShareManager().doShare(self,withall)
 		
 	def toString(self):
@@ -860,15 +869,43 @@ def copyGenericModImages(skinPath):
 		src = os.path.join(__addon__.getAddonInfo('path'),'skinmods',f)
 		dst = os.path.join(skinPath,'media',f)
 		shutil.copy(src, dst)
-				
+	
+def copyTree(source,target):
+	import shutil
+	shutil.copytree(source, target)
+	
 def installSkinMod(restore=False):
+	restart = False
+	localAddonsPath = os.path.join(xbmc.translatePath('special://home'),'addons')
 	skinPath = xbmc.translatePath('special://skin')
 	if skinPath.endswith(os.path.sep): skinPath = skinPath[:-1]
 	currentSkin = os.path.basename(skinPath)
+	localSkinPath = os.path.join(localAddonsPath,currentSkin)
+	
+	if not os.path.exists(localSkinPath):
+		yesno = xbmcgui.Dialog().yesno('Mod Install','Skin not installed in user path.','Click Yes to copy,','click No to Abort')
+		if not yesno: return
+		dialog = xbmcgui.DialogProgress()
+		dialog.create('Copying Files','Please wait...')
+		try:
+			copyTree(skinPath,localSkinPath)
+		except:
+			err = ERROR('Failed to copy skin to user directory')
+			xbmcgui.Dialog().ok('Error',err,'Failed to copy files, aborting.')
+			return
+		finally:
+			dialog.close()
+		restart = True
+		xbmcgui.Dialog().ok('Success','Files copied.')
+	skinPath = localSkinPath
+	
 	dialogPath = os.path.join(skinPath,'720p','DialogContextMenu.xml')
 	backupPath = os.path.join(skinPath,'720p','DialogContextMenu.xml.SSbackup')
 	sourcePath = os.path.join(__addon__.getAddonInfo('path'),'skinmods',currentSkin + '.xml')
 	fallbackSourcePath = os.path.join(__addon__.getAddonInfo('path'),'skinmods','default.xml')
+	
+			
+	LOG('Local Addons Path: %s' % localAddonsPath)
 	LOG('Current skin: %s' % currentSkin)
 	LOG('Skin path: %s' % skinPath)
 	LOG('Target path: %s' % dialogPath)
@@ -904,9 +941,11 @@ def installSkinMod(restore=False):
 		
 		if not os.path.exists(backupPath):
 			LOG('Creating backup of original skin file: ' + backupPath)
-			open(backupPath,'w').write(open(dialogPath,'r').read())
-		
+			open(backupPath,'w').write(open(dialogPath,'r').read())	
+			
 		os.remove(dialogPath)
 		open(dialogPath,'w').write(open(sourcePath,'r').read())
 		xbmcgui.Dialog().ok('Mod Install','Mod successfully installed!')
+		if restart:
+			xbmcgui.Dialog().ok('Restart','XBMC needs to be restarted','for the changes to take effect')
 	

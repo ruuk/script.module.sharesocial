@@ -409,6 +409,16 @@ class FeedWindow(xbmcgui.WindowXML):
 		if f.share and ShareSocial.shareTargetAvailable(f.share.shareType,'script.module.sharesocial'):
 			menu.addItem(None,None)
 			menu.addItem('share','Share %s...' % f.share.shareType)
+		if f.share: f.share.updateData()
+		if f.share and f.share.shareType == 'video':
+				if f.share.media or f.share.page and 'youtube' in f.share.page:
+					menu.addItem('watch_video','Watch Video')
+		elif f.share and f.share.shareType == 'image':
+				if f.share.media:
+					menu.addItem('view_image','View Image')
+		elif f.get('textimage'):
+			menu.addItem('view_picture','View Image')
+			
 		result = menu.getResult()
 		if not result: return
 		if result == 'update_status':
@@ -421,6 +431,40 @@ class FeedWindow(xbmcgui.WindowXML):
 			ShareSocial.__addon__.openSettings() #@UndefinedVariable
 		elif result == 'share':
 			f.share.share()
+		elif result == 'watch_video':
+			if f.share.media:
+				self.showVideo(f.share.media)
+			elif f.share.page and 'youtube' in f.share.page:
+				self.showYoutubeVideo(f.share.page)
+		elif result == 'view_image':
+			self.showImage(f.share.media)
+		elif result == 'view_picture':
+			url = self.feedList.getSelectedItem().getProperty('picture')
+			print url
+			self.showImage(url)
+	
+	def showVideo(self,source):
+		xbmc.executebuiltin('PlayMedia(%s)' % source)
+		
+	def showYoutubeVideo(self,pageurl):
+		#http://www.youtube.com/watch?v=MuLDUws0Zh8&feature=autoshare
+		ID = ''
+		try:
+			ID = pageurl.split('v=',1)[-1].split('&',1)[0]
+		except:
+			ERROR('Could not extract youtube video id')
+			xbmcgui.Dialog().ok('ERROR','Could not extract youtube video ID')
+			return
+		path = 'plugin://plugin.video.youtube/?path=/root/video&action=play_video&videoid=' + ID
+		self.showVideo(path)
+		
+	
+	def showImage(self,source):
+		target_path = os.path.join(ShareSocial.CACHE_PATH,'slideshow')
+		if not os.path.exists(target_path): os.makedirs(target_path)
+		ShareSocial.clearDirFiles(target_path)
+		ShareSocial.getFile(source,os.path.join(target_path,'image.jpg'))
+		xbmc.executebuiltin('SlideShow(%s)' % target_path)
 		
 def openFeedWindow():
 	windowFile = 'ShareSocial-Feed.xml'
