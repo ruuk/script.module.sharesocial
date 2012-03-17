@@ -47,14 +47,25 @@
 					</control>
 					<control type="label">
 						<posx>15</posx>
-						<posy>-2</posy>
+						<posy>3</posy>
 						<width>600</width>
 						<height>16</height>
 						<font>font10</font>
 						<aligny>center</aligny>
-						<textcolor>black</textcolor>
 						<align>left</align>
 						<info>ListItem.Label2</info>
+						<textcolor>FF880000</textcolor>
+					</control>
+					<control type="label">
+						<posx>600</posx>
+						<posy>3</posy>
+						<width>135</width>
+						<height>16</height>
+						<font>font10</font>
+						<aligny>center</aligny>
+						<align>right</align>
+						<info>ListItem.Property(ago)</info>
+						<textcolor>FF666666</textcolor>
 					</control>
 					<control type="image">
 						<posx>15</posx>
@@ -149,14 +160,25 @@
 					</control>
 					<control type="label">
 						<posx>15</posx>
-						<posy>-2</posy>
+						<posy>3</posy>
 						<width>600</width>
 						<height>16</height>
 						<font>font10</font>
 						<aligny>center</aligny>
-						<textcolor>black</textcolor>
 						<align>left</align>
 						<info>ListItem.Label2</info>
+						<textcolor>FF880000</textcolor>
+					</control>
+					<control type="label">
+						<posx>600</posx>
+						<posy>3</posy>
+						<width>135</width>
+						<height>16</height>
+						<font>font10</font>
+						<aligny>center</aligny>
+						<align>right</align>
+						<info>ListItem.Property(ago)</info>
+						<textcolor>FF666666</textcolor>
 					</control>
 					<control type="image">
 						<posx>15</posx>
@@ -254,8 +276,8 @@
 				<width>569</width>
 				<height>384</height>
 				<texture fallback="ShareSocial-Progress-QuestionMark.png">$INFO[Container(120).ListItem.Property(picture)]</texture>
+				<bordertexture border="0">ShareSocial-Feed-WhiteSquare.png</bordertexture>
 				<aspectratio>keep</aspectratio>
-				<fadetime>200</fadetime>
 				<visible>!StringCompare(Container(120).ListItem.Property(picture),)</visible>
 			</control>
 		</control>

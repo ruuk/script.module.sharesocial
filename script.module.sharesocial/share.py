@@ -92,7 +92,7 @@ class FeedListItem():
 		item = self.item
 		item.setThumbnailImage(userimage)
 		item.setLabel('[CR]' + text)
-		item.setLabel2('[CR][COLOR FF880000]%s[/COLOR]' % username)
+		item.setLabel2(username)
 		item.setProperty('picture',textimage)
 		item.setProperty('usericon',(r.get('client') or {}).get('photo',''))
 		comments = buildCommentsDisplay('[CR][COLOR FF880000]%s: [/COLOR]%s' % (username,text),r.comments)
@@ -121,6 +121,35 @@ class ExtendedControlList():
 	def reset(self):
 		self.items = []
 		self.control.reset()
+
+def durationToText(unixtime):
+	disp = []
+	days = int(unixtime/86400)
+	if days: disp.append('%sd' % days)
+	left = unixtime % 86400
+	hours = int(left/3600)
+	if hours: disp.append('%sh' % hours)
+	left = left % 3600
+	mins = int(left/60)
+	if mins: disp.append('%sm' % mins)
+	sec = int(left % 60)
+	if sec: disp.append('%ss' % sec)
+	return ' '.join(disp)
+
+def durationToShortText(unixtime):
+	disp = []
+	days = int(unixtime/86400)
+	if days: return '%sd' % days
+	left = unixtime % 86400
+	hours = int(left/3600)
+	if hours: return '%sh' % hours
+	left = left % 3600
+	mins = int(left/60)
+	if mins: return '%sm' % mins
+	sec = int(left % 60)
+	if sec: return '%ss' % sec
+	return ' '.join(disp)
+	
 
 def extractEmbeddedURL(url):
 	new = urllib.unquote(url.split('http',1)[-1])
@@ -224,6 +253,7 @@ class FeedWindow(xbmcgui.WindowXML):
 		left = float(100 - afterpct)
 		dialog = xbmcgui.DialogProgress()
 		dialog.create('Getting Feeds')
+		now = time.daylight and (time.time() + time.altzone) or int(time.mktime(time.gmtime()))
 		try:
 			if not results:
 				results = pool.getResult(dialog)
@@ -245,13 +275,16 @@ class FeedWindow(xbmcgui.WindowXML):
 				for r in result.items:
 					item = FeedListItem(r)
 					item.setProperty('feedicon',feedIcon)
+					item.setProperty('ago',durationToShortText(now - item.timestamp) + ' ago')
 					items[item.timestamp + (1.0/ct)] = item #add decimal to make unique
 					ct+=1
 			
 			keys = items.keys()
 			keys.sort(reverse=True)
 			self.feedList.reset()
-			for k in keys: self.feedList.addItem(items[k])
+			for k in keys:
+				print "%s - %s" % (k,durationToShortText(now - items[k].timestamp))
+				self.feedList.addItem(items[k])
 			if not passed_results: self.save()
 		finally:
 			dialog.close()
