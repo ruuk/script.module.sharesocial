@@ -7,7 +7,6 @@ from lib import ShareSocial
 def scaleImage(path):
 	try:
 		import Image
-		from lib import ShareSocial
 		LOG('Imported PIL')
 		large = Image.open(path)
 		w,h = large.size
@@ -68,10 +67,34 @@ class TwitterTargetFunctions(ShareSocial.TargetFunctions):
 				textimage = ''
 				ent = r.get('entities')
 				commsObj = None
+				share = None
 				if ent:
+					#print ent
 					media = ent.get('media')
-					if media: 
-						textimage = media[0].get('media_url')
+					urls = ent.get('urls')
+					if media:
+						if media[0].get('type') == 'photo':
+							textimage = media[0].get('media_url')
+							share = ShareSocial.getShare('script.module.sharesocial', 'image')
+							share.media = textimage
+							share.page = media[0].get('expanded_url')
+							share.title = "From Twitter via XBMC"
+							share.thumbnail = textimage
+							#print textimage
+							#print media[0].get('expanded_url')
+							#print media[0].get('url')
+							#print media[0].get('display_url')
+					elif urls:
+						url = urls[0].get('expanded_url')
+						if 'youtu.be' in url or 'youtube.com' in url:
+							ID = ShareSocial.extractYoutubeIDFromPageURL(url)
+							textimage = ShareSocial.getYoutubeThumbURL(ID)
+							share = ShareSocial.getShare('script.module.sharesocial', 'video')
+							share.media = ShareSocial.getYoutubeSWFUrl(ID)
+							share.page = url
+							share.title = "From Youtube via Twitter via XBMC"
+							share.thumbnail = textimage
+							
 				replyToID = r.get('in_reply_to_status_id')
 				if replyToID:
 					commsObj = getObject.getCommentsList()
@@ -79,7 +102,7 @@ class TwitterTargetFunctions(ShareSocial.TargetFunctions):
 					commsObj.isReplyTo = True
 					commsObj.callbackDict['replyToID'] = replyToID
 					
-				getObject.addItem(username,userimage,text,timestamp,textimage,comments=commsObj,client_user=user)
+				getObject.addItem(username,userimage,text,timestamp,textimage,comments=commsObj,client_user=user,share=share)
 		return getObject
 				
 	def handleShare(self,share,ID):

@@ -253,7 +253,7 @@ class FeedWindow(xbmcgui.WindowXML):
 		left = float(100 - afterpct)
 		dialog = xbmcgui.DialogProgress()
 		dialog.create('Getting Feeds')
-		now = time.daylight and (time.time() + time.altzone) or int(time.mktime(time.gmtime()))
+		now = time.daylight and (time.time() + time.altzone + 3600) or int(time.mktime(time.gmtime()))
 		try:
 			if not results:
 				results = pool.getResult(dialog)
@@ -283,7 +283,7 @@ class FeedWindow(xbmcgui.WindowXML):
 			keys.sort(reverse=True)
 			self.feedList.reset()
 			for k in keys:
-				print "%s - %s" % (k,durationToShortText(now - items[k].timestamp))
+				#print "%s - %s" % (k,durationToShortText(now - items[k].timestamp))
 				self.feedList.addItem(items[k])
 			if not passed_results: self.save()
 		finally:
@@ -444,11 +444,12 @@ class FeedWindow(xbmcgui.WindowXML):
 			menu.addItem('share','Share %s...' % f.share.shareType)
 		if f.share: f.share.updateData()
 		if f.share and f.share.shareType == 'video':
-				if f.share.media or f.share.page and 'youtube' in f.share.page:
-					menu.addItem('watch_video','Watch Video')
+			youtubeID = ShareSocial.extractYoutubeIDFromPageURL(f.share.page or '')
+			if f.share.media or youtubeID:
+				menu.addItem('watch_video','Watch Video')
 		elif f.share and f.share.shareType == 'image':
-				if f.share.media:
-					menu.addItem('view_image','View Image')
+			if f.share.media:
+				menu.addItem('view_image','View Image')
 		elif f.get('textimage'):
 			menu.addItem('view_picture','View Image')
 			
@@ -465,10 +466,11 @@ class FeedWindow(xbmcgui.WindowXML):
 		elif result == 'share':
 			f.share.share()
 		elif result == 'watch_video':
-			if f.share.media:
+			youtubeID = ShareSocial.extractYoutubeIDFromPageURL(f.share.page or f.share.media or '')
+			if youtubeID:
+				self.showYoutubeVideo(youtubeID)
+			elif f.share.media:
 				self.showVideo(f.share.media)
-			elif f.share.page and 'youtube' in f.share.page:
-				self.showYoutubeVideo(f.share.page)
 		elif result == 'view_image':
 			self.showImage(f.share.media)
 		elif result == 'view_picture':
@@ -479,16 +481,8 @@ class FeedWindow(xbmcgui.WindowXML):
 	def showVideo(self,source):
 		xbmc.executebuiltin('PlayMedia(%s)' % source)
 		
-	def showYoutubeVideo(self,pageurl):
-		#http://www.youtube.com/watch?v=MuLDUws0Zh8&feature=autoshare
-		ID = ''
-		try:
-			ID = pageurl.split('v=',1)[-1].split('&',1)[0]
-		except:
-			ERROR('Could not extract youtube video id')
-			xbmcgui.Dialog().ok('ERROR','Could not extract youtube video ID')
-			return
-		path = 'plugin://plugin.video.youtube/?path=/root/video&action=play_video&videoid=' + ID
+	def showYoutubeVideo(self,ID):
+		path = ShareSocial.getYoutubePluginURL(ID)
 		self.showVideo(path)
 		
 	
@@ -672,7 +666,7 @@ def updateStatus():
 	share = ShareSocial.getShare('script.module.sharesocial', 'status')
 	share.askMessage('Enter Status Message')
 	if not share.message: return
-	share.share(True)
+	share.share(withall=True)
 	
 def addTwitterUser():
 	from twitter import TwitterSession

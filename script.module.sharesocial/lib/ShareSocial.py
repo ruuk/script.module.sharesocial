@@ -544,9 +544,9 @@ class Share():
 			target = ShareManager().getTarget(self.sourceID)
 			target.functions().getShareData(self)
 			
-	def share(self,withall=False):
+	def share(self,target_id=None,withall=False):
 		self.updateData()
-		ShareManager().doShare(self,withall)
+		ShareManager().doShare(self,target_id,withall)
 		
 	def toString(self):
 		d = self.__dict__.copy()
@@ -607,7 +607,7 @@ class TargetFunctions():
 			blocksize = 8192
 			total = 1
 			progressCallback = self.progressCallback
-			if not hasattr(data,'read') and not isinstance(data, array):
+			if not hasattr(data,'read') and not isinstance(data, array) and hasattr(data,'len'):
 				total = len(data)
 				data = StringIO.StringIO(data)
 			elif hasattr(data,'read') and not isinstance(data, array):
@@ -759,12 +759,12 @@ class ShareManager():
 		self.dialog = None
 		self.readTargets()
 	
-	def doShare(self,share,withall=False):
+	def doShare(self,share,target_id=None,withall=False):
 		try:
 			self.dialog = openProgress()
 			self.dialog.create('Sharing','Starting...')
 			self.dialog.setIcons(share.getIcon(),'')
-			share = self._doShare(share,withall)
+			share = self._doShare(share,target_id,withall)
 		finally:
 			self.dialog.close()
 	
@@ -777,9 +777,15 @@ class ShareManager():
 			LOG('Sharing: Failed - %s' % share.finishedMessage())
 			return False
 	
-	def _doShare(self,share,withall=False):
+	def _doShare(self,share,target_id=None,withall=False):
 		share._shareManager = self
-		target = self.askForTarget(share,withall)
+		if target_id:
+			target = self.getTarget(target_id)
+			if not target: return share.failed('Share Target Not Found')
+			if not target.canShare(share):
+				return share.failed('Type Not Supported By Target')
+		else:
+			target = self.askForTarget(share,withall)
 		if not target: return share.failed('User Canceled')
 		if isinstance(target,list):
 			for t in target:
@@ -862,7 +868,28 @@ class ShareManager():
 		if hide is not None: self.dialog.hideBar(hide)
 		self.dialog.updateProgress(level,total,message,m2,m3)
 		return True
-			
+	
+def getYoutubePluginURL(ID):
+	return 'plugin://plugin.video.youtube/?path=/root/video&action=play_video&videoid=' + ID
+		
+def getYoutubeThumbURL(ID):
+	return 'http://i1.ytimg.com/vi/%s/default.jpg' % ID
+
+def getYoutubeSWFUrl(ID):
+	return 'http://www.youtube.com/v/' + ID
+	
+def extractYoutubeIDFromPageURL(url):
+	if 'youtu.be' in url:
+		#http://youtu.be/sSMbOuNBV0s
+		sp = url.split('.be/',1)
+		if len(sp) == 2: return sp[1]
+		return ''
+	elif 'youtube.com' in url:
+		#http://www.youtube.com/watch?v=MuLDUws0Zh8&feature=autoshare
+		ID = url.split('v=',1)[-1].split('&',1)[0]
+		if 'youtube.com' in url: return ''
+		return ID
+	
 def copyGenericModImages(skinPath):
 	import shutil
 	for f in ('ShareSocial-ButtonFocus.png','ShareSocial-CloseButtonFocus.png','ShareSocial-CloseButton.png','ShareSocial-DialogBack.png'):
