@@ -1,6 +1,12 @@
 Social Sharing Changelog
 
-Current Version : 0.1.1 (Beta)
+Current Version : 0.1.2 (Beta)
+
+*** 0.1.1 ***
+
+View YouTube videos from Twitter feeds
+Share photos and videos from Twitter feeds
+Changes to time ago handling
 
 *** 0.1.1 ***
 
