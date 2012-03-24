@@ -299,6 +299,10 @@ def dictFromString(data,val_is_hex=True):
 			key = key[7:]
 			val = dictFromString(binascii.unhexlify(val),val_is_hex)
 			theDict[key] = val
+		elif key.startswith('list___'):
+			key = key[7:]
+			val = binascii.unhexlify(val).split(',')
+			theDict[key] = val
 		else:
 			if val_is_hex:
 				theDict[key] = binascii.unhexlify(val)
@@ -311,9 +315,14 @@ def dictToString(data_dict):
 	ret = []
 	try:
 		for key,val in data_dict.items():
-			if isinstance(val,dict):
+			if val == None:
+				continue
+			elif isinstance(val,dict):
 				val = dictToString(val)
-				key = 'dict___' + key 
+				key = 'dict___' + key
+			elif isinstance(val,list):
+				val = ','.join(val)
+				key = 'list___' + key
 			ret.append('%s=%s' % (key,binascii.hexlify(valToString(val))))
 	except:
 		print data_dict
@@ -560,6 +569,9 @@ class Share():
 		self.__dict__.update(d)
 		return self
 	
+	def toPluginRunscriptString(self):
+		return 'XBMC.RunScript(script.module.sharesocial,share,%s)' % self.toString().replace(',',':')
+	
 ############################################################--------------------####
 #                                                              TargetFunctions              ((o))->
 ############################################################--------------------####
@@ -683,7 +695,7 @@ class ShareTarget():
 																											','.join(self.shareTypes),
 																											','.join(self.provideTypes),
 																											self.iconPath )
-		
+	
 	def getFunctions(self):
 		module = os.path.basename(self.importPath)
 		subPath = os.path.dirname(self.importPath)
@@ -738,6 +750,9 @@ class ShareTarget():
 		except:
 			ERROR('ShareTarget.doShare(): Error in target share() function')
 			return share.failed('Error in target share() function')
+		
+	def register(self):
+		ShareManager().registerShareTarget(self)
 
 ############################################################--------------------####
 #                                                              ShareManager                      !!
@@ -889,7 +904,32 @@ def extractYoutubeIDFromPageURL(url):
 		ID = url.split('v=',1)[-1].split('&',1)[0]
 		if 'youtube.com' in url: return ''
 		return ID
-	
+
+def getVimeoFLV(ID):
+	#TODO: Make this better
+	infoURL = 'http://www.vimeo.com/moogaloop/load/clip:' + ID
+	o = urllib2.urlopen(infoURL)
+	info = o.read()
+	try:
+		sig = re.search('<request_signature>([^<]*)</request_signature>',info).group(1)
+		exp = re.search('<request_signature_expires>([^<]*)</request_signature_expires>',info).group(1)
+		hd_or_sd = int(re.search('isHD>([^<]*)</isHD>',info).group(1)) and 'hd' or 'sd'
+	except:
+		return ''
+	flvURL = 'http://www.vimeo.com/moogaloop/play/clip:%s/%s/%s/?q=%s' % (ID,sig,exp,hd_or_sd)
+	try:
+		flvURL = urllib2.urlopen(urllib2.Request(flvURL,None,{'User-Agent':'Wget/1.9.1'})).geturl()
+	except:
+		ERROR('Failed to get vimeo URL')
+		return ''
+	#print flvURL
+	return flvURL
+#http://vimeo.com/moogaloop.swf?clip_id=38759453
+#http://vimeo.com/api/v2/video/38759453.json
+
+#http://www.vimeo.com/moogaloop/load/clip:82739
+#http://www.vimeo.com/moogaloop/play/clip:82739/38c7be0cecb92a0a3623c2769bccf73b/1221451200/?q=sd
+
 def copyGenericModImages(skinPath):
 	import shutil
 	for f in ('ShareSocial-ButtonFocus.png','ShareSocial-CloseButtonFocus.png','ShareSocial-CloseButton.png','ShareSocial-DialogBack.png'):

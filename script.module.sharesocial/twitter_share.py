@@ -94,7 +94,14 @@ class TwitterTargetFunctions(ShareSocial.TargetFunctions):
 							share.page = url
 							share.title = "From Youtube via Twitter via XBMC"
 							share.thumbnail = textimage
-							
+						elif 'vimeo.com' in url:
+							#http://vimeo.com/moogaloop.swf?clip_id=38759453
+							ID = url.rsplit('/',1)[-1]
+							share = ShareSocial.getShare('script.module.sharesocial', 'video')
+							#share.media = 'http://vimeo.com/moogaloop.swf?clip_id=' + ID
+							share.media = ShareSocial.getVimeoFLV(ID)
+							share.page = url
+							share.title = "From Youtube via Twitter via XBMC"
 				replyToID = r.get('in_reply_to_status_id')
 				if replyToID:
 					commsObj = getObject.getCommentsList()

@@ -550,7 +550,7 @@ def clearDirFiles(filepath):
 		f = os.path.join(filepath,f)
 		if os.path.isfile(f): os.remove(f)
 		
-def processShare():
+def processSkinShare():
 	LOG('Processing share')
 	
 	argNames = ['ignore','apiver','addonID','addonName','ext','imagepath','title','folder','filename','label','path']
@@ -648,6 +648,13 @@ def processShare():
 	share.share()
 	clearDirFiles(ShareSocial.CACHE_PATH)	
 
+def processShare():
+	try:
+		share = ShareSocial.Share().fromString(sys.argv[2].replace(':',','))
+	except:
+		ERROR('share.py: processShare(): Failed to create share from string')
+	share.share()
+	
 def registerAsShareTarget():
 	target = ShareSocial.getShareTarget()
 	target.addonID = 'script.module.sharesocial'
@@ -680,8 +687,10 @@ if __name__ == '__main__':
 			ShareSocial.installSkinMod(True)
 		elif sys.argv[1] == 'add_twitter_user':
 			addTwitterUser()
-		else:
+		elif sys.argv[1] == 'share':
 			processShare()
+		else:
+			processSkinShare()
 	else:
 		registerAsShareTarget()
 		#updateStatus()
