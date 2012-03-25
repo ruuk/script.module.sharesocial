@@ -6,7 +6,7 @@ import iso8601
 __author__ = 'ruuk'
 __url__ = 'http://code.google.com'
 __date__ = '02-13-2012'
-__version__ = '0.1.2'
+__version__ = '0.1.3'
 __addon__ = xbmcaddon.Addon(id='script.module.sharesocial')
 __lang__ = __addon__.getLocalizedString
 
@@ -905,6 +905,7 @@ class Video():
 		self.title = ''
 		self.sourceName = ''
 		self.playableCallback = None
+		self.isVideo = True
 		
 	def playableURL(self):
 		return self.playable or self.media
@@ -914,6 +915,12 @@ class Video():
 		return self.playableCallback(self.ID)
 		
 class WebVideo():
+	alphabetB58 = '123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ'
+	countB58 = len(alphabetB58)
+	
+	def __init__(self):
+		self.modules = {}
+		
 	def getVideoObject(self,url):
 		if 'youtu.be' in url or 'youtube.com' in url:
 			ID = self.extractYoutubeIDFromURL(url)
@@ -930,10 +937,23 @@ class WebVideo():
 			video.thumbnail = info.get('thumbnail','')
 			video.title = info.get('title','')
 			video.playableCallback = self.getVimeoFLV
+		elif 'flic.kr/' in url:
+			ID = self.getFlickrIDFromURL(url)
+			info = self.getFlickrInfo(ID)
+			video = Video(ID)
+			video.sourceName = 'flickr'
+			video.thumbnail = info.get('thumbnail','')
+			video.title = info.get('title','')
+			if not info.get('type') == 'video':
+				video.isVideo = False
+				return video
+			video.playable = self.getFlickrPluginURL(ID)
 		else:
 			return None
-		print video.__dict__
 		return video
+	
+	def getFlickrPluginURL(self,ID):
+		return 'plugin://plugin.image.flickr/?video_id=' + ID
 	
 	def getYoutubePluginURL(self,ID):
 		return 'plugin://plugin.video.youtube/?path=/root/video&action=play_video&videoid=' + ID
@@ -956,6 +976,29 @@ class WebVideo():
 			if 'youtube.com' in url: return ''
 			return ID
 	
+	def getFlickrIDFromURL(self,url):
+		#try:
+		#	longURL = urllib2.urlopen(url).geturl()
+		#except:
+		#	return ''
+		#if longURL.endswith('/'): longURL = longURL[:-1]
+		#return longURL.rsplit('/',1)[-1]
+		end = url.rsplit('/',1)[-1]
+		return str(self.decodeBase58(end))
+		
+	def getFlickrInfo(self,ID):
+		fImport = self.doImport('plugin.image.flickr', '', 'default')
+		if not fImport: return {}
+		fsession = fImport.FlickrSession()
+		if not fsession.authenticate(): return {}
+		info = fsession.flickr.photos_getInfo(photo_id=ID)
+		photo = info.find('photo')
+		title = photo.find('title').text
+		media = photo.get('media','')
+		thumb = fImport.photoURL(photo.get('farm',''),photo.get('server',''),ID,photo.get('secret',''))
+		#<location latitude="47.574433" longitude="-122.640611" accuracy="16" context="0" place_id="pqEP2S9UV7P8W60smQ" woeid="55995994">
+		return {'title':title,'type':media,'thumbnail':thumb}
+		
 	def extractVimeoIDFromURL(self,url):
 		#TODO: Finish this :)
 		ID = url.rsplit('/',1)[-1]
@@ -993,6 +1036,33 @@ class WebVideo():
 		#print flvURL
 		return flvURL
 	
+	def decodeBase58(self,s):
+		""" Decodes the base58-encoded string s into an integer """
+		decoded = 0
+		multi = 1
+		s = s[::-1]
+		for char in s:
+			decoded += multi * self.alphabetB58.index(char)
+			multi = multi * self.countB58
+		return decoded
+	
+	def doImport(self,addonID,path,module):
+		full = '/'.join((addonID,path,module))
+		if full in self.modules: return self.modules[full]
+		addonPath = xbmcaddon.Addon(addonID).getAddonInfo('path')
+		importPath = os.path.join(addonPath,path)
+		sys.path.insert(0,importPath)
+		try:
+			mod = __import__(module)
+			reload(mod)
+			del sys.path[0]
+			self.modules[full] = mod
+			return mod
+		except ImportError:
+			ERROR('Error importing module %s for share target %s.' % (self.importPath,self.addonID))
+		except:
+			ERROR('ShareTarget.getModule(): Error during target sharing import')
+		return 
 #http://vimeo.com/moogaloop.swf?clip_id=38759453
 #http://vimeo.com/api/v2/video/38759453.json
 

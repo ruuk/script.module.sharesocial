@@ -80,7 +80,7 @@ class FeedListItem():
 		self.item = xbmcgui.ListItem()
 		self.feeditem = feeditem
 		self.timestamp = 0
-		self.fillItem()
+		if feeditem: self.fillItem()
 		
 	def fillItem(self):
 		r = self.feeditem
@@ -217,6 +217,7 @@ class FeedWindow(xbmcgui.WindowXML):
 		f.close()
 		
 	def load(self):
+		if not os.path.exists(self.saveFile): return 0
 		f = open(self.saveFile,'r')
 		data = f.read()
 		f.close()
@@ -261,6 +262,7 @@ class FeedWindow(xbmcgui.WindowXML):
 				self.provisions = results
 			c=0
 			for result in results:
+				if not result.target: continue
 				if not result or result._error:
 					if result:
 						LOG('No result for feed: %s - %s' % (result.target.name,result._error))
@@ -286,7 +288,12 @@ class FeedWindow(xbmcgui.WindowXML):
 			for k in keys:
 				#print "%s - %s" % (k,durationToShortText(now - items[k].timestamp))
 				self.feedList.addItem(items[k])
-			if not passed_results: self.save()
+			if not keys:
+				fi = FeedListItem(None)
+				fi.setLabel('[CR]NO FEEDS')
+				self.feedList.addItem(fi)
+			elif not passed_results:
+				self.save()
 		finally:
 			dialog.close()
 		
@@ -440,17 +447,18 @@ class FeedWindow(xbmcgui.WindowXML):
 		menu.addItem('manage_feeds','Manage Feeds')
 		menu.addItem('settings','Settings')
 		f = self.feedList.getSelectedItem().feeditem
-		if f.share and ShareSocial.shareTargetAvailable(f.share.shareType,'script.module.sharesocial'):
-			menu.addItem(None,None)
-			menu.addItem('share','Share %s...' % f.share.shareType)
-		if f.share: f.share.updateData()
-		if f.share and f.share.shareType == 'video':
-			menu.addItem('watch_video','Watch Video')
-		elif f.share and f.share.shareType == 'image':
-			if f.share.media:
-				menu.addItem('view_image','View Image')
-		elif f.get('textimage'):
-			menu.addItem('view_picture','View Image')
+		if f:
+			if f.share and ShareSocial.shareTargetAvailable(f.share.shareType,'script.module.sharesocial'):
+				menu.addItem(None,None)
+				menu.addItem('share','Share %s...' % f.share.shareType)
+			if f.share: f.share.updateData()
+			if f.share and f.share.shareType == 'video':
+				menu.addItem('watch_video','Watch Video')
+			elif f.share and f.share.shareType == 'image':
+				if f.share.media:
+					menu.addItem('view_image','View Image')
+			elif f.get('textimage'):
+				menu.addItem('view_picture','View Image')
 			
 		result = menu.getResult()
 		if not result: return

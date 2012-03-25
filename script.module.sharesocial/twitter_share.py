@@ -94,15 +94,24 @@ class TwitterTargetFunctions(ShareSocial.TargetFunctions):
 						video = ShareSocial.getVideoInfo(url)
 						if video:
 							textimage = video.thumbnail
-							share = ShareSocial.getShare('script.module.sharesocial', 'video')
-							share.media = video.playableURL()
-							print share.media
-							share.swf = video.swf
-							share.page = url
-							share.title = "%s: From %s via Twitter via XBMC" % (video.title,video.sourceName)
-							share.thumbnail = textimage
-							if not share.media:
-								share.callbackData = {'source':video.sourceName,'id':video.ID}
+							vid_title = ''
+							if video.title: vid_title = video.title + ': '
+							if video.isVideo:
+								share = ShareSocial.getShare('script.module.sharesocial', 'video')
+								share.media = video.playableURL()
+								#print share.media
+								share.swf = video.swf
+								share.page = url
+								share.title = "%sFrom %s via Twitter via XBMC" % (vid_title,video.sourceName)
+								share.thumbnail = textimage
+								if not share.media:
+									share.callbackData = {'source':video.sourceName,'id':video.ID}
+							else:
+								share = ShareSocial.getShare('script.module.sharesocial', 'image')
+								share.media = textimage
+								share.page = url
+								share.title = "%sFrom %s via Twitter via XBMC" % (vid_title,video.sourceName)
+								share.thumbnail = textimage
 							
 				replyToID = r.get('in_reply_to_status_id')
 				if replyToID:

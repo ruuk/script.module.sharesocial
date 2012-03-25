@@ -104,6 +104,7 @@ class TwitterUser():
 		
 	def load(self):
 		data = getSetting('user_data_%s' % self.ID)
+		if not data: return None
 		data = ShareSocial.dictFromString(binascii.unhexlify(data))
 		self.__dict__.update(data)
 		return self
