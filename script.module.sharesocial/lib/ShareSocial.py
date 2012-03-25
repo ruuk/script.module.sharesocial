@@ -883,47 +883,116 @@ class ShareManager():
 		if hide is not None: self.dialog.hideBar(hide)
 		self.dialog.updateProgress(level,total,message,m2,m3)
 		return True
+
+def getVideoInfo(url):
+	return WebVideo().getVideoObject(url)
 	
-def getYoutubePluginURL(ID):
-	return 'plugin://plugin.video.youtube/?path=/root/video&action=play_video&videoid=' + ID
+def getVideoPlayable(sourceName,ID):
+	if sourceName == 'Vimeo':
+		return WebVideo().getVimeoFLV(ID)
+	elif sourceName == 'YouTube':
+		return WebVideo().getYoutubePluginURL(ID)
+	
+class Video():
+	def __init__(self,ID=None):
+		self.ID = ID
+		self.thumbnail = ''
+		self.swf = ''
+		self.media = ''
+		self.embed = ''
+		self.page = ''
+		self.playable = ''
+		self.title = ''
+		self.sourceName = ''
+		self.playableCallback = None
 		
-def getYoutubeThumbURL(ID):
-	return 'http://i1.ytimg.com/vi/%s/default.jpg' % ID
-
-def getYoutubeSWFUrl(ID):
-	return 'http://www.youtube.com/v/' + ID
+	def playableURL(self):
+		return self.playable or self.media
 	
-def extractYoutubeIDFromPageURL(url):
-	if 'youtu.be' in url:
-		#http://youtu.be/sSMbOuNBV0s
-		sp = url.split('.be/',1)
-		if len(sp) == 2: return sp[1]
-		return ''
-	elif 'youtube.com' in url:
-		#http://www.youtube.com/watch?v=MuLDUws0Zh8&feature=autoshare
-		ID = url.split('v=',1)[-1].split('&',1)[0]
-		if 'youtube.com' in url: return ''
+	def getPlayableURL(self):
+		if not self.playableCallback: return self.playableURL()
+		return self.playableCallback(self.ID)
+		
+class WebVideo():
+	def getVideoObject(self,url):
+		if 'youtu.be' in url or 'youtube.com' in url:
+			ID = self.extractYoutubeIDFromURL(url)
+			video = Video(ID)
+			video.sourceName = 'YouTube'
+			video.thumbnail = self.getYoutubeThumbURL(ID)
+			video.playable = self.getYoutubePluginURL(ID)
+			video.swf = self.getYoutubeSWFUrl(ID)
+		elif 'vimeo.com' in url:
+			ID = self.extractVimeoIDFromURL(url)
+			video = Video(ID)
+			video.sourceName = 'Vimeo'
+			info = self.getVimeoInfo(ID)
+			video.thumbnail = info.get('thumbnail','')
+			video.title = info.get('title','')
+			video.playableCallback = self.getVimeoFLV
+		else:
+			return None
+		print video.__dict__
+		return video
+	
+	def getYoutubePluginURL(self,ID):
+		return 'plugin://plugin.video.youtube/?path=/root/video&action=play_video&videoid=' + ID
+			
+	def getYoutubeThumbURL(self,ID):
+		return 'http://i1.ytimg.com/vi/%s/default.jpg' % ID
+	
+	def getYoutubeSWFUrl(self,ID):
+		return 'http://www.youtube.com/v/' + ID
+		
+	def extractYoutubeIDFromURL(self,url):
+		if 'youtu.be' in url:
+			#http://youtu.be/sSMbOuNBV0s
+			sp = url.split('.be/',1)
+			if len(sp) == 2: return sp[1]
+			return ''
+		elif 'youtube.com' in url:
+			#http://www.youtube.com/watch?v=MuLDUws0Zh8&feature=autoshare
+			ID = url.split('v=',1)[-1].split('&',1)[0]
+			if 'youtube.com' in url: return ''
+			return ID
+	
+	def extractVimeoIDFromURL(self,url):
+		#TODO: Finish this :)
+		ID = url.rsplit('/',1)[-1]
 		return ID
-
-def getVimeoFLV(ID):
-	#TODO: Make this better
-	infoURL = 'http://www.vimeo.com/moogaloop/load/clip:' + ID
-	o = urllib2.urlopen(infoURL)
-	info = o.read()
-	try:
-		sig = re.search('<request_signature>([^<]*)</request_signature>',info).group(1)
-		exp = re.search('<request_signature_expires>([^<]*)</request_signature_expires>',info).group(1)
-		hd_or_sd = int(re.search('isHD>([^<]*)</isHD>',info).group(1)) and 'hd' or 'sd'
-	except:
-		return ''
-	flvURL = 'http://www.vimeo.com/moogaloop/play/clip:%s/%s/%s/?q=%s' % (ID,sig,exp,hd_or_sd)
-	try:
-		flvURL = urllib2.urlopen(urllib2.Request(flvURL,None,{'User-Agent':'Wget/1.9.1'})).geturl()
-	except:
-		ERROR('Failed to get vimeo URL')
-		return ''
-	#print flvURL
-	return flvURL
+	
+	def getVimeoInfo(self,ID):
+		infoURL = 'http://vimeo.com/api/v2/video/%s.xml' % ID
+		xml = urllib2.urlopen(urllib2.Request(infoURL,None,{'User-Agent':'Wget/1.9.1'})).read()
+		ret = {}
+		try:
+			ret = {}
+			ret['title'] = re.search('<url>([^<]*)</url>',xml).group(1)
+			ret['thumbnail'] = re.search('<thumbnail_large>([^<]*)</thumbnail_large>',xml).group(1)
+		except:
+			pass
+		return ret
+		
+	def getVimeoFLV(self,ID):
+		#TODO: Make this better
+		infoURL = 'http://www.vimeo.com/moogaloop/load/clip:' + ID
+		o = urllib2.urlopen(infoURL)
+		info = o.read()
+		try:
+			sig = re.search('<request_signature>([^<]*)</request_signature>',info).group(1)
+			exp = re.search('<request_signature_expires>([^<]*)</request_signature_expires>',info).group(1)
+			hd_or_sd = int(re.search('isHD>([^<]*)</isHD>',info).group(1)) and 'hd' or 'sd'
+		except:
+			return ''
+		flvURL = 'http://www.vimeo.com/moogaloop/play/clip:%s/%s/%s/?q=%s' % (ID,sig,exp,hd_or_sd)
+		try:
+			flvURL = urllib2.urlopen(urllib2.Request(flvURL,None,{'User-Agent':'Wget/1.9.1'})).geturl()
+		except:
+			ERROR('Failed to get vimeo URL')
+			return ''
+		#print flvURL
+		return flvURL
+	
 #http://vimeo.com/moogaloop.swf?clip_id=38759453
 #http://vimeo.com/api/v2/video/38759453.json
 

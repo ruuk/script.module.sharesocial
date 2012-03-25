@@ -152,6 +152,7 @@ def durationToShortText(unixtime):
 	
 
 def extractEmbeddedURL(url):
+	if not url: return url
 	new = urllib.unquote(url.split('http',1)[-1])
 	if 'http://' in new:
 		url = 'http://' + new.split('http://',1)[-1]
@@ -444,9 +445,7 @@ class FeedWindow(xbmcgui.WindowXML):
 			menu.addItem('share','Share %s...' % f.share.shareType)
 		if f.share: f.share.updateData()
 		if f.share and f.share.shareType == 'video':
-			youtubeID = ShareSocial.extractYoutubeIDFromPageURL(f.share.page or '')
-			if f.share.media or youtubeID:
-				menu.addItem('watch_video','Watch Video')
+			menu.addItem('watch_video','Watch Video')
 		elif f.share and f.share.shareType == 'image':
 			if f.share.media:
 				menu.addItem('view_image','View Image')
@@ -466,11 +465,7 @@ class FeedWindow(xbmcgui.WindowXML):
 		elif result == 'share':
 			f.share.share()
 		elif result == 'watch_video':
-			youtubeID = ShareSocial.extractYoutubeIDFromPageURL(f.share.page or f.share.media or '')
-			if youtubeID:
-				self.showYoutubeVideo(youtubeID)
-			elif f.share.media:
-				self.showVideo(f.share.media)
+			self.showVideo(f.share.media)
 		elif result == 'view_image':
 			self.showImage(f.share.media)
 		elif result == 'view_picture':
@@ -481,11 +476,6 @@ class FeedWindow(xbmcgui.WindowXML):
 	def showVideo(self,source):
 		xbmc.executebuiltin('PlayMedia(%s)' % source)
 		
-	def showYoutubeVideo(self,ID):
-		path = ShareSocial.getYoutubePluginURL(ID)
-		self.showVideo(path)
-		
-	
 	def showImage(self,source):
 		target_path = os.path.join(ShareSocial.CACHE_PATH,'slideshow')
 		if not os.path.exists(target_path): os.makedirs(target_path)

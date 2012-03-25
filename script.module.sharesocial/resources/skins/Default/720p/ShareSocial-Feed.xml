@@ -80,6 +80,14 @@
 						<posy>68</posy>
 						<width>64</width>
 						<height>64</height>
+						<texture>ShareSocial-Feed-WhiteSquare.png</texture>
+						<colordiffuse>FFFFFFFF</colordiffuse>
+					</control>
+					<control type="image">
+						<posx>17</posx>
+						<posy>68</posy>
+						<width>64</width>
+						<height>64</height>
 						<texture>$INFO[ListItem.Thumb]</texture>
 						<aspectratio>scale</aspectratio>
 					</control>
@@ -187,6 +195,14 @@
 						<height>68</height>
 						<texture>ShareSocial-Feed-WhiteSquare.png</texture>
 						<colordiffuse>FF000000</colordiffuse>
+					</control>
+					<control type="image">
+						<posx>17</posx>
+						<posy>68</posy>
+						<width>64</width>
+						<height>64</height>
+						<texture>ShareSocial-Feed-WhiteSquare.png</texture>
+						<colordiffuse>FFFFFFFF</colordiffuse>
 					</control>
 					<control type="image">
 						<posx>17</posx>

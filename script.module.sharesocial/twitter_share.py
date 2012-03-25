@@ -51,7 +51,12 @@ class TwitterTargetFunctions(ShareSocial.TargetFunctions):
 		#print status
 		commsObj.addItem(status['user'].get('name','ERROR'),status['user'].get('profile_image_url'),status.get('text','ERROR'),status.get('created_at'))
 		return commsObj
-			
+	
+	def getShareData(self,share):
+		infoDict = share.callbackData
+		share.media = ShareSocial.getVideoPlayable(infoDict.get('source'), infoDict.get('id'))
+		return share
+		
 	def provide(self,getObject,ID=None):
 		session = TwitterSession(ID=ID,require_existing_user=True)
 		if not session.twit: return getObject.error('NOUSERS')
@@ -86,22 +91,19 @@ class TwitterTargetFunctions(ShareSocial.TargetFunctions):
 							#print media[0].get('display_url')
 					elif urls:
 						url = urls[0].get('expanded_url')
-						if 'youtu.be' in url or 'youtube.com' in url:
-							ID = ShareSocial.extractYoutubeIDFromPageURL(url)
-							textimage = ShareSocial.getYoutubeThumbURL(ID)
+						video = ShareSocial.getVideoInfo(url)
+						if video:
+							textimage = video.thumbnail
 							share = ShareSocial.getShare('script.module.sharesocial', 'video')
-							share.media = ShareSocial.getYoutubeSWFUrl(ID)
+							share.media = video.playableURL()
+							print share.media
+							share.swf = video.swf
 							share.page = url
-							share.title = "From Youtube via Twitter via XBMC"
+							share.title = "%s: From %s via Twitter via XBMC" % (video.title,video.sourceName)
 							share.thumbnail = textimage
-						elif 'vimeo.com' in url:
-							#http://vimeo.com/moogaloop.swf?clip_id=38759453
-							ID = url.rsplit('/',1)[-1]
-							share = ShareSocial.getShare('script.module.sharesocial', 'video')
-							#share.media = 'http://vimeo.com/moogaloop.swf?clip_id=' + ID
-							share.media = ShareSocial.getVimeoFLV(ID)
-							share.page = url
-							share.title = "From Youtube via Twitter via XBMC"
+							if not share.media:
+								share.callbackData = {'source':video.sourceName,'id':video.ID}
+							
 				replyToID = r.get('in_reply_to_status_id')
 				if replyToID:
 					commsObj = getObject.getCommentsList()
