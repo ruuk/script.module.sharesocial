@@ -6,7 +6,7 @@ import iso8601
 __author__ = 'ruuk'
 __url__ = 'http://code.google.com'
 __date__ = '02-13-2012'
-__version__ = '0.1.3'
+__version__ = '0.1.4'
 __addon__ = xbmcaddon.Addon(id='script.module.sharesocial')
 __lang__ = __addon__.getLocalizedString
 
@@ -708,11 +708,11 @@ class ShareTarget():
 			del sys.path[0]
 			return mod.doShareSocial()
 		except ImportError:
-			ERROR('Error importing module %s for share target %s.' % (self.importPath,self.addonID))
+			ERROR('ShareTarget.getFunctions(): Error importing module %s for share target %s.' % (self.importPath,self.addonID))
 			#self.unRegisterShareTarget(self)
 			return ShareFailure('targetImportFailure','Failed To Import Share Target')
 		except:
-			error = ERROR('ShareTarget.getModule(): Error during target sharing import')
+			error = ERROR('ShareTarget.getFunctions(): Error during target sharing import')
 			return ShareFailure('targetImportError','Error In Target Sharing Import: %s' % error,error)
 		
 	def functions(self):

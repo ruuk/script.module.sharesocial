@@ -3,7 +3,11 @@ Social Sharing Changelog
 TODO:
     Fix timestamp issues
     
-Current Version : 0.1.3 (Beta)
+Current Version : 0.1.4 (Beta)
+
+*** 0.1.4 ***
+
+Added httplib2 files to project (used by twitter api and not standard python)
 
 *** 0.1.3 ***
 
