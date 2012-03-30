@@ -16,7 +16,7 @@ import urllib
 import urllib2
 import urlparse
 import httplib
-import httplib2
+from oauth2 import httplib2
 import mimetypes
 import mimetools
 import re

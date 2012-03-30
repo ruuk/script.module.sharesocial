@@ -16,7 +16,7 @@ import urllib
 import urllib2
 import urlparse
 import httplib
-import httplib2
+from oauth2 import httplib2
 import re
 
 from urllib2 import HTTPError

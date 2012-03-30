@@ -3,7 +3,11 @@ Social Sharing Changelog
 TODO:
     Fix timestamp issues
     
-Current Version : 0.1.4 (Beta)
+Current Version : 0.1.5 (Beta)
+
+*** 0.1.5 ***
+
+Moved httplib2 and changed some imports so that all the imports work
 
 *** 0.1.4 ***
 
