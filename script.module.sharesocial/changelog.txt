@@ -3,7 +3,12 @@ Social Sharing Changelog
 TODO:
     Fix timestamp issues
     
-Current Version : 0.1.5 (Beta)
+Current Version : 0.1.6 (Beta)
+
+*** 0.1.6 ***
+
+Added module for clipboard functions
+Fixed errors caused when an addon has been removed or disabled
 
 *** 0.1.5 ***
 

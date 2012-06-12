@@ -227,7 +227,7 @@ class FeedWindow(xbmcgui.WindowXML):
 		unixtime = int(first)
 		for section in sections:
 			fp = ShareSocial.FeedProvision().fromString(section)
-			self.provisions.append(fp)
+			if fp: self.provisions.append(fp)
 		return unixtime
 		
 	def getFeedUserIDs(self,feed):

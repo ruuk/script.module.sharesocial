@@ -6,7 +6,7 @@ import iso8601
 __author__ = 'ruuk'
 __url__ = 'http://code.google.com'
 __date__ = '02-13-2012'
-__version__ = '0.1.5'
+__version__ = '0.1.6'
 __addon__ = xbmcaddon.Addon(id='script.module.sharesocial')
 __lang__ = __addon__.getLocalizedString
 
@@ -17,6 +17,18 @@ TARGETS_PATH = os.path.join(MAIN_PATH,'targets')
 CACHE_PATH = os.path.join(MAIN_PATH,'cache')
 if not os.path.exists(CACHE_PATH): os.makedirs(CACHE_PATH)
 
+SHARE_TYPE_IMAGE = 'image'
+SHARE_TYPE_AUDIO = 'audio'
+SHARE_TYPE_VIDEO = 'video'
+SHARE_TYPE_LINK = 'link'
+SHARE_TYPE_IMAGEFILE = 'imagefile'
+SHARE_TYPE_VIDEOFILE = 'videofile'
+SHARE_TYPE_AUDIOFILE = 'audiofile'
+SHARE_TYPE_BINARYFILE = 'binaryfile'
+SHARE_TYPE_HTML = 'html'
+SHARE_TYPE_TEXT = 'text'
+SHARE_TYPE_STATUS = 'status'
+					
 def LOG(text):
 	xbmc.log('ShareSocial: %s' % text)
 	
@@ -25,6 +37,7 @@ def ERROR(message):
 	traceback.print_exc()
 	return str(sys.exc_info()[1])
 
+LOG('Version: ' + __version__)
 def getSetting(key,default=None):
 	string = __addon__.getSetting(key)
 	if not string: return default
@@ -447,7 +460,11 @@ class FeedProvision():
 		print self.target
 		for line in lines:
 			self.items.append(FeedItem().fromString(line,self.target))
-		return self
+		try:
+			xbmcaddon.Addon(addonID) #Test for addon missing or disabled
+			return self
+		except:
+			return None
 
 class Share():
 	def __init__(self,sourceID=None,sharetype=None):
@@ -699,7 +716,11 @@ class ShareTarget():
 	def getFunctions(self):
 		module = os.path.basename(self.importPath)
 		subPath = os.path.dirname(self.importPath)
-		addonPath = xbmcaddon.Addon(self.addonID).getAddonInfo('path')
+		try:
+			addonPath = xbmcaddon.Addon(self.addonID).getAddonInfo('path')
+		except:
+			error = ERROR('ShareTarget.getFunctions(): Error getting addon info, Missing addon?')
+			return ShareFailure('missingaddon','Error In Target Sharing - Getting Addon Path: %s' % error,error)
 		importPath = os.path.join(addonPath,subPath)
 		sys.path.insert(0,importPath)
 		try:
@@ -818,7 +839,10 @@ class ShareManager():
 			if target.addonID != share.sourceID or share.sourceID == 'script.module.sharesocial':
 				for s in [share] + share.alternates:
 					if target.canShare(s.shareType):
-						users = target.functions().getUsers(share) or [{}]
+						try:
+							users = target.functions().getUsers(share) or [{}]
+						except:
+							break
 						for user in users:
 							show = target.name
 							if user: show = '%s (%s)' % (target.name,user.get('name',''))
@@ -866,8 +890,20 @@ class ShareManager():
 		for t in tdata.splitlines():
 			if not t: continue
 			target = ShareTarget(t)
-			self.targets[target.addonID] = target
-			
+			if self.addonInstalled(target.addonID):
+				self.targets[target.addonID] = target
+				#LOG('Share target found: ' + target.addonID)
+			else:
+				LOG('Missing target addon: ' + target.addonID)
+		
+	def addonInstalled(self,addonid):
+		try:
+			xbmcaddon.Addon(addonid)
+			return True
+		except:
+			return False
+		#return bool(xbmc.getInfoLabel('System.AddonTitle(%s)' % addonid))
+		
 	def writeTargets(self):
 		out = ''
 		for t in self.targets.values():
