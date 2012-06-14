@@ -492,7 +492,10 @@ class FeedWindow(xbmcgui.WindowXML):
 		xbmc.executebuiltin('SlideShow(%s)' % target_path)
 		
 def openFeedWindow():
-	windowFile = 'ShareSocial-Feed.xml'
+	if ShareSocial.__addon__.getSetting('skin') == '1':
+		windowFile = 'ShareSocial-Feed-Larger-Fonts.xml'
+	else:
+		windowFile = 'ShareSocial-Feed.xml'
 	w = FeedWindow(windowFile , xbmc.translatePath(ShareSocial.__addon__.getAddonInfo('path')), 'Default')
 	w.doModal()
 	del w

@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <settings>
   <!-- General -->
-  <category label="Main">
+  <category label="30000">
     <setting label="Install Context Menu Mod" type="action" action="RunScript(script.module.sharesocial,install_skin_mod)"/>
     <setting label="Undo Context Menu Mod" type="action" action="RunScript(script.module.sharesocial,undo_skin_mod)"/>
+    <setting id="skin" type="enum" label="30003" lvalues="30001|30002" default="0" />
   </category>
   <category label="Twitter">
     <setting label="Add Twitter User" type="action" option="close" action="RunScript(script.module.sharesocial,add_twitter_user)"/>

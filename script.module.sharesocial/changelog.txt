@@ -3,7 +3,11 @@ Social Sharing Changelog
 TODO:
     Fix timestamp issues
     
-Current Version : 0.1.6 (Beta)
+Current Version : 0.1.7 (Beta)
+
+*** 0.1.7 ***
+
+Added skin for feed view with larger fonts
 
 *** 0.1.6 ***
 
