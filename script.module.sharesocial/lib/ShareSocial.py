@@ -6,7 +6,7 @@ import iso8601
 __author__ = 'ruuk'
 __url__ = 'http://code.google.com'
 __date__ = '02-13-2012'
-__version__ = '0.1.7'
+__version__ = '0.1.8'
 __addon__ = xbmcaddon.Addon(id='script.module.sharesocial')
 __lang__ = __addon__.getLocalizedString
 
@@ -38,6 +38,9 @@ def ERROR(message):
 	return str(sys.exc_info()[1])
 
 LOG('Version: ' + __version__)
+ATV2 = xbmc.getCondVisibility('System.Platform.ATV2')
+if ATV2: LOG('Running on ATV2')
+
 def getSetting(key,default=None):
 	string = __addon__.getSetting(key)
 	if not string: return default
@@ -726,7 +729,7 @@ class ShareTarget():
 		try:
 			mod = __import__(module)
 			reload(mod)
-			del sys.path[0]
+			if not ATV2: del sys.path[0]
 			return mod.doShareSocial()
 		except ImportError:
 			ERROR('ShareTarget.getFunctions(): Error importing module %s for share target %s.' % (self.importPath,self.addonID))
