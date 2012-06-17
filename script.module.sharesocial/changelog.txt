@@ -3,7 +3,11 @@ Social Sharing Changelog
 TODO:
     Fix timestamp issues
     
-Current Version : 0.1.8 (Beta)
+Current Version : 0.1.9 (Beta)
+
+*** 0.1.9 ***
+
+Changed clipboard module name from Clipboard to SSClipboard to ensure a unique namespace
 
 *** 0.1.8 ***
 
