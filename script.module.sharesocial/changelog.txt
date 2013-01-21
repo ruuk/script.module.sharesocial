@@ -3,7 +3,13 @@ Social Sharing Changelog
 TODO:
     Fix timestamp issues
     
-Current Version : 0.1.9 (Beta)
+Current Version : 0.2.0 (Beta)
+
+*** 0.2.0 ***
+
+Added ability to provide other feed types such as images
+Added askForProvider() to the ShareManager which provides a dialog for choosing feed providers
+Added ability to display progress/share/provider dialog on top of other dialogs
 
 *** 0.1.9 ***
 

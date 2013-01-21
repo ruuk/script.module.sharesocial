@@ -5,8 +5,8 @@ import iso8601
 
 __author__ = 'ruuk'
 __url__ = 'http://code.google.com'
-__date__ = '02-13-2012'
-__version__ = '0.1.9'
+__date__ = '01-21-2013'
+__version__ = '0.2.0'
 __addon__ = xbmcaddon.Addon(id='script.module.sharesocial')
 __lang__ = __addon__.getLocalizedString
 
@@ -179,8 +179,10 @@ class EmbeddedChoiceDialog(xbmcgui.WindowXMLDialog):
 	def onFocus( self, controlId ): self.controlId = controlId
 		
 class EmbeddedChoiceMenu(ChoiceMenu):
-	def getResult(self):
+	def getResult(self,overlay=False):
 		windowFile = 'ShareSocial-ShareProgressChoiceMenu.xml'
+		if overlay: windowFile = 'ShareSocial-ShareProgressChoiceMenu-Overlay.xml'
+		print windowFile
 		w = EmbeddedChoiceDialog(windowFile , xbmc.translatePath(__addon__.getAddonInfo('path')), 'Default',display=self.display,icons=self.icons,caption=self.caption)
 		w.doModal()
 		result = w.result
@@ -189,7 +191,7 @@ class EmbeddedChoiceMenu(ChoiceMenu):
 		return self.items[result]
 		
 	
-class ProgressWindow(xbmcgui.WindowXML):
+class ProgressWindow(xbmcgui.WindowXMLDialog):
 	def __init__( self, *args, **kwargs ):
 		self.soFar = 0
 		self.total = 1
@@ -203,7 +205,7 @@ class ProgressWindow(xbmcgui.WindowXML):
 		self.line3 = ''
 		self._barhidden = False
 		
-		xbmcgui.WindowXML.__init__( self, *args, **kwargs )
+		xbmcgui.WindowXMLDialog.__init__( self, *args, **kwargs )
 	
 	def onInit(self):
 		self.bar = self.getControl(200)
@@ -262,11 +264,12 @@ class ProgressWindow(xbmcgui.WindowXML):
 		return self.canceled
 	
 	def close(self):
-		xbmcgui.WindowXML.close(self)
+		xbmcgui.WindowXMLDialog.close(self)
 		del self
 
-def openProgress():
+def openProgress(overlay=False):
 	windowFile = 'ShareSocial-ShareProgress.xml'
+	if overlay: windowFile = 'ShareSocial-ShareProgress-Overlay.xml' 
 	w = ProgressWindow(windowFile , xbmc.translatePath(__addon__.getAddonInfo('path')), 'Default')
 	return w
 			
@@ -422,27 +425,20 @@ class CommentsList():
 			ut = i.get('unixtime')
 			if ut: i['unixtime'] = int(float(ut))
 		return self
-						
-class FeedProvision():
-	def __init__(self,target=None):
+
+class Provision():
+	def __init__(self,target=None,ftype='feed'):
 		self.target = target
-		self.type = 'feed'
+		self.type = ftype
 		self._error = None
 		self.items = []
 	
 	def error(self,error):
 		self._error = error
 		return self
-	
-	def addItem(self,user,usericon,text,timestamp,textimage,comments=None,share=None,client_user={}):
-		timestamp = convertTimestampToUnix(timestamp)
-		f = FeedItem({'user':user,'usericon':usericon,'text':text,'unixtime':timestamp,'textimage':textimage,'client':client_user})
-		f.comments = comments
-		f.share = share
-		self.items.append(f)
-		
-	def getCommentsList(self):
-		return CommentsList(self.target)
+				
+	def addItem(self,share):
+		self.items.append(share)
 	
 	def failed(self,error='Unknown'):
 		self.error = error
@@ -453,6 +449,32 @@ class FeedProvision():
 		for i in self.items:
 			lines.append(i.toString())
 		return '\n'.join(lines)
+	
+	def fromString(self,data):
+		lines = data.splitlines()
+		first = dictFromString(lines.pop(0),False)
+		addonID = first.get('target',0)
+		self.target = ShareManager().getTarget(addonID)
+		for line in lines:
+			self.items.append(Share().fromString(line))
+		try:
+			xbmcaddon.Addon(addonID) #Test for addon missing or disabled
+			return self
+		except:
+			return None
+		
+class StreamProvision(Provision): pass
+		
+class FeedProvision(Provision):
+	def addItem(self,user,usericon,text,timestamp,textimage,comments=None,share=None,client_user={}):
+		timestamp = convertTimestampToUnix(timestamp)
+		f = FeedItem({'user':user,'usericon':usericon,'text':text,'unixtime':timestamp,'textimage':textimage,'client':client_user})
+		f.comments = comments
+		f.share = share
+		self.items.append(f)
+		
+	def getCommentsList(self):
+		return CommentsList(self.target)
 	
 	def fromString(self,data):
 		lines = data.splitlines()
@@ -747,6 +769,9 @@ class ShareTarget():
 	def provide(self,provideType):
 		if provideType == 'feed':
 			getObject = FeedProvision(self)
+		elif provideType == 'imagestream':
+			getObject = StreamProvision(self,'imagestream')
+			
 		try:
 			return self.functions().provide(getObject)
 		except:
@@ -880,6 +905,31 @@ class ShareManager():
 			if t.canProvide(provideType):
 				providers.append(t)
 		return providers
+	
+	def askForProvider(self,ptype='feed',overlay=False):
+		dialog = openProgress(overlay=overlay)
+		dialog.create('Stream')
+		iconPath = os.path.join(xbmcaddon.Addon('script.module.sharesocial').getAddonInfo('path'),'icon.png')
+		dialog.setIcons(iconPath, '')
+		try:
+			menu = EmbeddedChoiceMenu('Image Streams:')
+			for target in self.getProviders(ptype):
+				try:
+					users = target.functions().getUsers() or [{}]
+				except:
+					break
+				for user in users:
+					show = target.name
+					if user: show = '%s (%s)' % (target.name,user.get('name',''))
+					menu.addItem((target,user),show,target.getIcon())
+				break
+			target_user = menu.getResult(overlay=overlay)
+			if not target_user or isinstance(target_user,list): return target_user
+			target, user = target_user
+			target.user = user
+			return target
+		finally:
+			dialog.close()
 	
 	def getTarget(self,addonID):
 		return self.targets.get(addonID)
