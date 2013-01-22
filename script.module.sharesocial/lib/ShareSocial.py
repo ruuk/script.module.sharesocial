@@ -700,6 +700,14 @@ class ShareTarget():
 		self.user = {}
 		if target_data: self.fromString(target_data)
 	
+	def userID(self):
+		return self.user.get('id',self.user.get('name'))
+	
+	def targetID(self):
+		uid = self.userID() or ''
+		if uid: uid = uid + '@'
+		return uid + self.addonID
+	
 	def getIcon(self):
 		return self.iconPath or xbmcaddon.Addon(id=self.addonID).getAddonInfo('icon') or ''
 		
@@ -766,14 +774,14 @@ class ShareTarget():
 		self._functions = self.getFunctions()
 		return self._functions
 	
-	def provide(self,provideType):
+	def provide(self,provideType,uid=None):
 		if provideType == 'feed':
 			getObject = FeedProvision(self)
 		elif provideType == 'imagestream':
 			getObject = StreamProvision(self,'imagestream')
 			
 		try:
-			return self.functions().provide(getObject)
+			return self.functions().provide(getObject,uid)
 		except:
 			err = ERROR('ShareTarget.provide(): Error in target provide() function')
 			return getObject.failed(err)
