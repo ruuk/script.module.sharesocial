@@ -1,5 +1,5 @@
 import xbmcaddon #@UnresolvedImport
-from twython import twython
+from twython import Twython
 import binascii, httplib, StringIO
 from lib import ShareSocial
 from array import array
@@ -120,16 +120,16 @@ class TwitterSession():
 		if not self.user:
 			self.twit = None
 			return
-		self.twit = twython.Twython(self.consumerKey,self.consumerSecret,self.user.oauthToken,self.user.oauthSecret)
+		self.twit = Twython(self.consumerKey,self.consumerSecret,self.user.oauthToken,self.user.oauthSecret)
 	
 	def getAuth(self):
-		self.twit = twython.Twython(self.consumerKey,self.consumerSecret)
+		self.twit = Twython(self.consumerKey,self.consumerSecret)
 		url_dict = self.twit.get_authentication_tokens()
 		url,html = self.doBrowserAuth(url_dict['auth_url'])
 		print url
 		oauth_token, oauth_verifier = self.extractTokensFromURL(url)
 		if not oauth_token or not oauth_verifier: return False
-		self.twit = twython.Twython(self.consumerKey,self.consumerSecret,oauth_token,oauth_verifier)
+		self.twit = Twython(self.consumerKey,self.consumerSecret,oauth_token,oauth_verifier)
 		authorized_tokens = self.twit.get_authorized_tokens()
 		self.user = TwitterUser().fromOauthDict(authorized_tokens)
 		self.user.getData(self.twit)

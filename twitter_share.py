@@ -1,6 +1,6 @@
 import httplib, os
 from twitter import TwitterSession, LOG, getUserList, TwitterUser
-from twython import twython
+import twython
 
 from lib import ShareSocial
 
@@ -47,7 +47,7 @@ class TwitterTargetFunctions(ShareSocial.TargetFunctions):
 	def getFeedComments(self,commsObj):
 		replyToID = commsObj.callbackDict.get('replyToID')
 		session = TwitterSession()
-		status = session.twit.showStatus(id=replyToID)
+		status = session.twit.show_status(id=replyToID)
 		#print status
 		commsObj.addItem(status['user'].get('name','ERROR'),status['user'].get('profile_image_url'),status.get('text','ERROR'),status.get('created_at'))
 		return commsObj
@@ -62,9 +62,12 @@ class TwitterTargetFunctions(ShareSocial.TargetFunctions):
 		if not session.twit: return getObject.error('NOUSERS')
 		user = {'id':session.user.ID,'name':session.user.name,'photo':session.user.photo}
 		if getObject.type == 'feed':
-			results = session.twit.getHomeTimeline(include_entities=1)
+			results = session.twit.get_home_timeline(include_entities=1)
 			for r in results:
-				text = r.get('text','ERROR')
+				try:
+					text = r.get('text','ERROR')
+				except:
+					print results
 				#print '%s : %s' % (r.get('id'),text)
 				username = r['user'].get('name','ERROR')
 				userimage = r['user'].get('profile_image_url')
@@ -133,7 +136,7 @@ class TwitterTargetFunctions(ShareSocial.TargetFunctions):
 			if share.latitude:
 				params['lat'] = share.latitude
 				params['long'] = share.longitude
-			session.twit.updateStatus(**params)
+			session.twit.update_status(**params)
 			return share.succeeded()
 		elif share.shareType == 'imagefile':
 			path = share.media
@@ -146,17 +149,41 @@ class TwitterTargetFunctions(ShareSocial.TargetFunctions):
 			if share.latitude:
 				params['lat'] = share.latitude
 				params['long'] = share.longitude
-			session.twit.updateStatusWithMedia(path,params=params)
+			session.twit.update_status_with_media(path,params=params)
 			return share.succeeded()
 		elif share.shareType == 'image' or share.shareType == 'video':
 			share.askMessage()
-			params={'status':share.message + ' - ' + session.twit.shortenURL(share.page or share.media)}
+			params={'status':share.message + ' - ' + self.shortenURL(share.page or share.media)}
 			if share.latitude:
 				params['lat'] = share.latitude
 				params['long'] = share.longitude
-			session.twit.updateStatus(**params)
+			session.twit.update_status(**params)
 			return share.succeeded()
 		else:
 			return share.failed('Cannot Share This Type') # This of course shoudn't happen
 		
 		return share.failed('Unknown Error') # This of course shoudn't happen
+	
+	def shortenURL(self,url_to_shorten, shortener = "http://is.gd/api.php", query = "longurl"):
+		"""shortenURL(url_to_shorten, shortener = "http://is.gd/api.php", query = "longurl")
+
+			Shortens url specified by url_to_shorten.
+
+			Parameters:
+				url_to_shorten - URL to shorten.
+				shortener - In case you want to use a url shortening service other than is.gd.
+		"""
+		import urllib, urllib2
+		try:
+			content = urllib2.urlopen(shortener + "?" + urllib.urlencode({query: self.unicode2utf8(url_to_shorten)})).read()
+			return content
+		except urllib2.HTTPError, e:
+			raise twython.TwythonError("shortenURL() failed with a %s error code." % `e.code`)
+		
+	def unicode2utf8(self, text):
+		try:
+			if isinstance(text, unicode):
+				text = text.encode('utf-8')
+		except:
+			pass
+		return text
