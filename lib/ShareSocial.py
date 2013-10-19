@@ -6,7 +6,7 @@ import iso8601
 __author__ = 'ruuk'
 __url__ = 'http://code.google.com'
 __date__ = '01-21-2013'
-__version__ = '0.2.0'
+__version__ = '0.2.1'
 __addon__ = xbmcaddon.Addon(id='script.module.sharesocial')
 __lang__ = __addon__.getLocalizedString
 
@@ -769,6 +769,12 @@ class ShareTarget():
 			error = ERROR('ShareTarget.getFunctions(): Error during target sharing import')
 			return ShareFailure('targetImportError','Error In Target Sharing Import: %s' % error,error)
 		
+	def insertPath(self):
+		subPath = os.path.dirname(self.importPath)
+		addonPath = xbmcaddon.Addon(self.addonID).getAddonInfo('path')
+		importPath = os.path.join(addonPath,subPath)
+		sys.path.insert(0,importPath)
+		
 	def functions(self):
 		if self._functions: return self._functions
 		self._functions = self.getFunctions()
@@ -792,6 +798,7 @@ class ShareTarget():
 	def provideWithCall(self,provideType,provideCall,userIDs=None):
 		if provideType == 'feed':
 			getObject = FeedProvision(self)
+		self.insertPath()
 		try:
 			if not userIDs: return provideCall(getObject)
 			for ID in userIDs:

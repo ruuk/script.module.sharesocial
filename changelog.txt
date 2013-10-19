@@ -3,7 +3,12 @@ Social Sharing Changelog
 TODO:
     Fix timestamp issues
     
-Current Version : 0.2.0 (Beta)
+Current Version : 0.2.1 (Beta)
+
+*** 0.2.1 ***
+
+Update Twython (Python API for twitter)
+Fix for broken Facebook feeds
 
 *** 0.2.0 ***
 

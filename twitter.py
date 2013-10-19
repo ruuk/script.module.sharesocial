@@ -86,7 +86,7 @@ class TwitterUser():
 		self.photo = ''
 		
 	def getData(self,twit):
-		data = twit.showUser(user_id=self.ID)
+		data = twit.show_user(user_id=self.ID)
 		self.photo = data.get('profile_image_url','')
 		print self.photo
 		
@@ -121,6 +121,7 @@ class TwitterSession():
 			self.twit = None
 			return
 		self.twit = Twython(self.consumerKey,self.consumerSecret,self.user.oauthToken,self.user.oauthSecret)
+		self.user.getData(self.twit)
 	
 	def getAuth(self):
 		self.twit = Twython(self.consumerKey,self.consumerSecret)
