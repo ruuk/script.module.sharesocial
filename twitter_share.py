@@ -61,11 +61,9 @@ class TwitterTargetFunctions(ShareSocial.TargetFunctions):
 		session = TwitterSession(ID=ID,require_existing_user=True)
 		if not session.twit: return getObject.error('NOUSERS')
 		user = {'id':session.user.ID,'name':session.user.name,'photo':session.user.photo}
-		print user
 		if getObject.type == 'feed':
 			results = session.twit.get_home_timeline(include_entities=1)
 			for r in results:
-				print r
 				try:
 					text = r.get('text','ERROR')
 				except:
