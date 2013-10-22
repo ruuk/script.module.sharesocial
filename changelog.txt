@@ -7,8 +7,9 @@ Current Version : 0.2.2 (Beta)
 
 *** 0.2.2 ***
 
-Fix directory structure for proper import on some versions of python
-Fix error caused by auth using incorrect tokens
+Fixed the directory structure for proper import on some versions of python
+Fixed an error caused by auth using incorrect tokens
+Added a notification dialog when a new user is successfully added
 
 *** 0.2.1 ***
 

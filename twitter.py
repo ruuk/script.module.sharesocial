@@ -178,9 +178,11 @@ class TwitterSession():
 		self.user = TwitterUser(ID=user).load()
 		
 	def addUser(self):
+		import xbmcgui #@UnresolvedImport
 		if not self.getAuth():
-			import xbmcgui #@UnresolvedImport
 			xbmcgui.Dialog().ok('Failed','Failed to add user!')
+		else:
+			xbmcgui.Dialog().ok('Success','User Added:','',self.user.name)
 
 
 	
