@@ -1,6 +1,6 @@
 import xbmcaddon #@UnresolvedImport
 from twython import Twython
-import binascii, httplib, StringIO
+import binascii, httplib, StringIO, obfuscate
 from lib import ShareSocial
 from array import array
 
@@ -111,8 +111,9 @@ class TwitterUser():
 		
 class TwitterSession():
 	consumerKey = '2qKlX9iYmds7w4wLcASQw'
-	consumerSecret = 'M10s7yGPvX1Wvk3KCSE9p9Plq1imqjfODLUwsdPKoU'
+	secret = '54544577637a64355231423257444658646d737a53304e5452546c774f56427363544670625846715a6b39455446563363325251533239560a'
 	def __init__(self,user=None,add_user=False,ID=None,require_existing_user=False):
+		self.consumerSecret = obfuscate.deobfuscate(self.secret)
 		if add_user: return self.addUser()
 		self.user = user
 		if ID: self.user = TwitterUser(ID=ID).load()
@@ -120,20 +121,25 @@ class TwitterSession():
 		if not self.user:
 			self.twit = None
 			return
+		self.initializeUserTwit()
+	
+	def initializeUserTwit(self):
 		self.twit = Twython(self.consumerKey,self.consumerSecret,self.user.oauthToken,self.user.oauthSecret)
 		self.user.getData(self.twit)
-	
+		
 	def getAuth(self):
 		self.twit = Twython(self.consumerKey,self.consumerSecret)
-		url_dict = self.twit.get_authentication_tokens()
-		url,html = self.doBrowserAuth(url_dict['auth_url'])
-		print url
-		oauth_token, oauth_verifier = self.extractTokensFromURL(url)
-		if not oauth_token or not oauth_verifier: return False
-		self.twit = Twython(self.consumerKey,self.consumerSecret,oauth_token,oauth_verifier)
-		authorized_tokens = self.twit.get_authorized_tokens()
+		auth = self.twit.get_authentication_tokens()
+		url,html = self.doBrowserAuth(auth['auth_url'])  # @UnusedVariable
+		oauth_token, oauth_verifier = self.extractTokensFromURL(url)  # @UnusedVariable
+		oauth_token = auth['oauth_token']
+		oauth_token_secret = auth['oauth_token_secret']
+		if not oauth_token or not oauth_token_secret: return False
+		self.twit = Twython(self.consumerKey,self.consumerSecret,oauth_token,oauth_token_secret)
+		authorized_tokens = self.twit.get_authorized_tokens(oauth_verifier)
 		self.user = TwitterUser().fromOauthDict(authorized_tokens)
-		self.user.getData(self.twit)
+		self.initializeUserTwit()
+		#self.user.getData(self.twit)
 		self.user.save()
 		setSetting('last_user',self.user.ID)
 		return True
