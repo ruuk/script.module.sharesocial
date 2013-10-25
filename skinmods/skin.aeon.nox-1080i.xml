@@ -156,6 +156,23 @@
                 <visible>Window.IsActive(videos) + System.HasAddon(script.moviesets)</visible>
                 <visible>[System.GetBool(videolibrary.groupmoviesets) + SubString(ListItem.Path,videodb://1/7/)] | SubString(Container.FolderPath,videodb://1/7/)</visible>
             </control>
+            <control type="button" id="994">
+            	<visible>!PLUGIN_SHARE_VISIBLE!</visible>
+				<description>Share button</description>
+				<height>58</height>
+                <width>462</width>
+				<label>Share</label>
+				<textcolor>context</textcolor>
+				<focusedcolor>white2</focusedcolor>
+				<texturenofocus>dialogs/context_nofocus.png</texturenofocus>
+				<texturefocus>dialogs/context_highlight.png</texturefocus>
+				<colordiffuse>$VAR[SpotColorVar2]</colordiffuse>
+				<align>center</align>
+				<font>Font_Reg19</font>
+				<pulseonselect>no</pulseonselect>
+				<textoffsety>12</textoffsety>
+				<onclick>RunScript(script.module.sharesocial,1,skin.aeon.nox,$INFO[ListItem.Property(Addon.Name)],plugin,$INFO[ListItem.Thumb],$INFO[Listitem.Title],$INFO[Container.FolderPath],$INFO[ListItem.FileName],$INFO[Listitem.Label],$INFO[ListItem.FileNameAndPath])</onclick>
+			</control>
             <control type="button" id="995">
             	<visible>System.HasAddon(script.module.sharesocial) + !ListItem.IsFolder + !StringCompare(Container.FolderPath,) + !Container.Content(Addons) + !StringCompare(ListItem.Property(sharing),handled) + !SubString(ListItem.FileNameAndPath,plugin://,Left)</visible>
 				<description>Share button</description>

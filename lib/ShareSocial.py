@@ -6,7 +6,7 @@ import iso8601
 __author__ = 'ruuk'
 __url__ = 'http://code.google.com'
 __date__ = '01-21-2013'
-__version__ = '0.2.4'
+__version__ = '0.2.5'
 __addon__ = xbmcaddon.Addon(id='script.module.sharesocial')
 __lang__ = __addon__.getLocalizedString
 
@@ -1273,7 +1273,14 @@ def installSkinMod(restore=False):
 			open(backupPath,'w').write(open(dialogPath,'r').read())	
 			
 		os.remove(dialogPath)
-		open(dialogPath,'w').write(open(sourcePath,'r').read())
+		supportedAddonIDs = ('plugin.video.youtube','plugin.video.revision3')
+		addonCheck = 'SubString(ListItem.FileNameAndPath,plugin://{0},Left)'
+		checks = []
+		pluginShareVisible = '!StringCompare(ListItem.Property(sharing),handled) + !Control.IsVisible(995)'
+		for a in supportedAddonIDs:
+			checks.append(addonCheck.format(a))
+		if checks: pluginShareVisible += ' + [' + ' | '.join(checks) + ']'
+		open(dialogPath,'w').write(open(sourcePath,'r').read().replace('!PLUGIN_SHARE_VISIBLE!',pluginShareVisible))
 		xbmcgui.Dialog().ok('Mod Install','Mod successfully installed!')
 		refreshXBMCSkin()
 		#if restart:

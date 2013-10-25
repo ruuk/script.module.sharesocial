@@ -97,7 +97,6 @@ class TwitterTargetFunctions(ShareSocial.TargetFunctions):
 						url = urls[0].get('expanded_url')
 						video = webvideo.getVideoInfo(url)
 						if video:
-							print 'TEST'
 							textimage = video.thumbnail
 							vid_title = ''
 							if video.title: vid_title = video.title + ': '
@@ -176,6 +175,8 @@ class TwitterTargetFunctions(ShareSocial.TargetFunctions):
 				url_to_shorten - URL to shorten.
 				shortener - In case you want to use a url shortening service other than is.gd.
 		"""
+		if len(url_to_shorten) < 31: return url_to_shorten #In case it's already shortened
+			
 		import urllib, urllib2
 		try:
 			content = urllib2.urlopen(shortener + "?" + urllib.urlencode({query: self.unicode2utf8(url_to_shorten)})).read()

@@ -3,7 +3,12 @@ Social Sharing Changelog
 TODO:
     Fix timestamp issues
     
-Current Version : 0.2.4 (Beta)
+Current Version : 0.2.5 (Beta)
+
+*** 0.2.5 ***
+
+Added handling for sharing from YouTube plugin
+Added handling for sharing from Revision3 plugin
 
 *** 0.2.4 ***
 

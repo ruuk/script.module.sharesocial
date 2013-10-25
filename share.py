@@ -546,10 +546,29 @@ def clearDirFiles(filepath):
 	for f in os.listdir(filepath):
 		f = os.path.join(filepath,f)
 		if os.path.isfile(f): os.remove(f)
-		
-def processSkinShare():
-	LOG('Processing share')
 	
+def handlePluginShare(args):
+	sourceID = args.get('path','').split('://',1)[-1].split('/',1)[0]
+	page = ''
+	videoID = ''
+	if 'youtube' in sourceID:
+		videoID = args.get('path','').split('videoid=',1)[-1].split('&')[0]
+		page = 'http://youtu.be/%s' % videoID
+	elif 'revision3' in sourceID:
+		url_split = args.get('imagepath','').rsplit('/',1)[-1].split('--')
+		page = 'http://revision3.com/{0}/{1}'.format(url_split[0],url_split[2])
+	else:
+		print args
+		return None
+	share = ShareSocial.getShare(sourceID,'video')
+	share.name = args.get('addonName','Share Social')
+	share.title = share.name + ' Video'
+	share.page = page
+	share.thumbnail = args.get('imagepath')
+	share.share()
+			
+def processSkinShare():
+	LOG('Sharing From Plugin ')
 	argNames = ['ignore','apiver','addonID','addonName','ext','imagepath','title','folder','filename','label','path']
 	args = {}
 	
@@ -557,6 +576,10 @@ def processSkinShare():
 		if not argNames: break
 		argName = argNames.pop(0)
 		args[argName] = s
+	
+	if args['ext'] == 'plugin':
+		handlePluginShare(args)
+		return
 	
 	path = args.get('folder','') + args.get('filename','') # Because some paths get screwed up from the filenameandpath infolabel
 	if 'plugin://' in path: path = args.get('path','') # Because we need this for the URL

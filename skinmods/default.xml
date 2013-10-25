@@ -72,6 +72,37 @@
 				<ondown>996</ondown>
 			</control>
 		</control>
+		<control type="group">
+            <visible>!PLUGIN_SHARE_VISIBLE!</visible>
+			<posx>335</posx>
+			<posy>10</posy>
+			<control type="image">
+				<description>Share button background image</description>
+				<posx>0</posx>
+				<posy>0</posy>
+				<width>168</width>
+				<height>72</height>
+				<texture border="20">ShareSocial-DialogBack.png</texture>
+			</control>
+			<control type="button" id="994">
+				<description>Share button</description>
+				<posx>20</posx>
+				<posy>20</posy>
+				<width>128</width>
+				<height>32</height>
+				<label>Share</label>
+				<font>fontContextMenu</font>
+				<align>center</align>
+				<textcolor>grey2</textcolor>
+				<focusedcolor>white</focusedcolor>
+				<onclick>RunScript(script.module.sharesocial,1,skin.confluence,$INFO[ListItem.Property(Addon.Name)],plugin,$INFO[ListItem.Thumb],$INFO[Listitem.Title],$INFO[Container.FolderPath],$INFO[ListItem.FileName],$INFO[Listitem.Label],$INFO[ListItem.FileNameAndPath])</onclick>
+				<texturefocus border="5">ShareSocial-ButtonFocus.png</texturefocus>
+				<onleft>996</onleft>
+				<onright>996</onright>
+				<onup>996</onup>
+				<ondown>996</ondown>
+			</control>
+		</control>
 		<control type="button" id="1000">
 			<description>button template</description>
 			<posx>-</posx>
