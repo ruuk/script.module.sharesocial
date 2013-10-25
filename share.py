@@ -1,6 +1,6 @@
 import os, sys, traceback, threading, time, binascii
 import xbmc, xbmcgui, xbmcvfs #@UnresolvedImport
-from lib import ShareSocial
+from lib import ShareSocial, window
 import urllib
 
 DIALOG = None
@@ -492,13 +492,8 @@ class FeedWindow(xbmcgui.WindowXML):
 		xbmc.executebuiltin('SlideShow(%s)' % target_path)
 		
 def openFeedWindow():
-	if ShareSocial.__addon__.getSetting('skin') == '1':
-		windowFile = 'ShareSocial-Feed-Larger-Fonts.xml'
-	else:
-		windowFile = 'ShareSocial-Feed.xml'
-	w = FeedWindow(windowFile , xbmc.translatePath(ShareSocial.__addon__.getAddonInfo('path')), 'Default')
-	w.doModal()
-	del w
+	windowFile = 'ShareSocial-Feed.xml'
+	window.openWindow(FeedWindow, windowFile, 'Default')
 
 def askType():
 	options = ('Video','Audio','Image')
@@ -691,6 +686,10 @@ if __name__ == '__main__':
 			addTwitterUser()
 		elif sys.argv[1] == 'share':
 			processShare()
+		elif sys.argv[1] == 'font_select_dialog':
+			window.fontSelectDialog(sys.argv[2])
+		elif sys.argv[1] == 'set_font_setting':
+			window.setFontSetting(sys.argv[2],sys.argv[3])
 		else:
 			processSkinShare()
 	else:

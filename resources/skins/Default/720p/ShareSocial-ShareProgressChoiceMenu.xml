@@ -25,7 +25,7 @@
 				<height>44</height>
 				<font>font20</font>
 				<aligny>center</aligny>
-				<textcolor>black</textcolor>
+				<textcolor>FF000000</textcolor>
 				<align>center</align>
 			</control>
 			<control type='list' id="120">
@@ -54,7 +54,7 @@
 						<height>40</height>
 						<font>font20</font>
 						<aligny>center</aligny>
-						<textcolor>white</textcolor>
+						<textcolor>FFFFFFFF</textcolor>
 						<align>left</align>
 						<info>ListItem.Label</info>
 					</control>
@@ -81,7 +81,7 @@
 						<height>40</height>
 						<font>font20</font>
 						<aligny>center</aligny>
-						<textcolor>white</textcolor>
+						<textcolor>FFFFFFFF</textcolor>
 						<align>left</align>
 						<info>ListItem.Label</info>
 					</control>

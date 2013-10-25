@@ -3,14 +3,21 @@ Social Sharing Changelog
 TODO:
     Fix timestamp issues
     
-Current Version : 0.2.3 (Beta)
+Current Version : 0.2.4 (Beta)
+
+*** 0.2.4 ***
+
+Fix to force correct font colors
+Put in correct language strings file
+Remove settings option 'Feed Skin'
+Added settings section 'Fonts' which allows you to set the fonts for the feed
 
 *** 0.2.3 ***
 
 Added support for context mod on 1080p skins
 Added requirement for WebViewer to addon.xml (was always needed for twitter auth, now also uses it's video handling)
 Fix for local image sharing using deprecated xbmc module call
-Fix for local image sharing to work with recently updated api
+Fix for local image sharing to work with recently updated twitter api
 Added new custom Aeon Nox context dialog mod
 Now refreshes skin after skin mod install
 

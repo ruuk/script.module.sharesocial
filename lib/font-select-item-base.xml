@@ -1,0 +1,16 @@
+<control type="button" id="!ID!">
+      <width>570</width>
+      <height>60</height>
+      <visible>true</visible>
+      <colordiffuse>FFFFFFFF</colordiffuse>
+      <texturefocus>ShareSocial-Feed-WhiteSquare.png</texturefocus>
+      <texturenofocus>ShareSocial-Feed-GreySquare.png</texturenofocus>
+      <label>!LABEL!</label>
+      <font>!FONT!</font>
+      <textcolor>FF000000</textcolor>
+      <focusedcolor>FF000000</focusedcolor>
+      <align>left</align>
+      <aligny>top</aligny>
+      <onclick>RunScript(script.module.sharesocial,set_font_setting,!SETTING!,!FONT!)</onclick>
+      <onclick>PreviousMenu</onclick>
+</control>

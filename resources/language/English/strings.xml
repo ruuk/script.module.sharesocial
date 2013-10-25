@@ -1,14 +1,13 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <strings>
-    <!-- All %s must remain in string but can change position -->
-    <string id="30001">Plugin Path</string>
-    <string id="30002">Amount Of Seconds To Display Each Image</string>
-	<string id="30003">Dim Level</string>
-	<string id="30004">Effect</string>
-	<string id="30005">Pan And Zoom</string>
-	<string id="30006">Slide</string>
-	<string id="30007">Crossfade</string>
-	<string id="30010">Slideshow On XBMC Startup</string>
-	<string id="30011">Reset Path (Necessary to change Plugin Path)</string>
-	<string id="30012">Randomize Order</string>
+    <string id="30000">Main</string>
+    <string id="30001">Fonts</string>
+    <string id="30002">Twitter</string>
+    <string id="30100">Install Context Menu Mod</string>
+    <string id="30101">Undo Context Menu Mod</string>
+    <string id="30102">Feed Status Text</string>
+    <string id="30103">Feed Status Name</string>
+    <string id="30104">Feed Status Time</string>
+    <string id="30105">Feed Comments</string>
+    <string id="30106">Add Twitter User</string>
 </strings>

@@ -50,7 +50,7 @@
 						<posy>3</posy>
 						<width>600</width>
 						<height>16</height>
-						<font>font10</font>
+						<font>font_list_status_name</font>
 						<aligny>center</aligny>
 						<align>left</align>
 						<info>ListItem.Label2</info>
@@ -61,7 +61,7 @@
 						<posy>3</posy>
 						<width>135</width>
 						<height>16</height>
-						<font>font10</font>
+						<font>font_list_status_time</font>
 						<aligny>center</aligny>
 						<align>right</align>
 						<info>ListItem.Property(ago)</info>
@@ -120,9 +120,9 @@
 						<posy>18</posy>
 						<width>508</width>
 						<height>114</height>
-						<font>font10</font>
+						<font>font_list_status_text</font>
 						<aligny>center</aligny>
-						<textcolor>black</textcolor>
+						<textcolor>FF000000</textcolor>
 						<selectedcolor>green</selectedcolor>
 						<align>left</align>
 						<info>ListItem.Label</info>
@@ -141,9 +141,9 @@
 						<posy>18</posy>
 						<width>434</width>
 						<height>114</height>
-						<font>font10</font>
+						<font>font_list_status_text</font>
 						<aligny>center</aligny>
-						<textcolor>black</textcolor>
+						<textcolor>FF000000</textcolor>
 						<selectedcolor>green</selectedcolor>
 						<align>left</align>
 						<info>ListItem.Label</info>
@@ -171,7 +171,7 @@
 						<posy>3</posy>
 						<width>600</width>
 						<height>16</height>
-						<font>font10</font>
+						<font>font_list_status_name</font>
 						<aligny>center</aligny>
 						<align>left</align>
 						<info>ListItem.Label2</info>
@@ -182,7 +182,7 @@
 						<posy>3</posy>
 						<width>135</width>
 						<height>16</height>
-						<font>font10</font>
+						<font>font_list_status_time</font>
 						<aligny>center</aligny>
 						<align>right</align>
 						<info>ListItem.Property(ago)</info>
@@ -241,9 +241,9 @@
 						<posy>18</posy>
 						<width>508</width>
 						<height>114</height>
-						<font>font10</font>
+						<font>font_list_status_text</font>
 						<aligny>center</aligny>
-						<textcolor>black</textcolor>
+						<textcolor>FF000000</textcolor>
 						<selectedcolor>green</selectedcolor>
 						<align>left</align>
 						<info>ListItem.Label</info>
@@ -262,9 +262,9 @@
 						<posy>18</posy>
 						<width>434</width>
 						<height>114</height>
-						<font>font10</font>
+						<font>font_list_status_text</font>
 						<aligny>center</aligny>
-						<textcolor>black</textcolor>
+						<textcolor>FF000000</textcolor>
 						<selectedcolor>green</selectedcolor>
 						<align>left</align>
 						<info>ListItem.Label</info>
@@ -314,9 +314,9 @@
 				<posy>5</posy>
 				<width>565</width>
 				<height>230</height>
-				<font>font10</font>
+				<font>font_comments_text</font>
 				<aligny>center</aligny>
-				<textcolor>black</textcolor>
+				<textcolor>FF000000</textcolor>
 				<align>left</align>
 				<info>Container(120).ListItem.Property(comments)</info>
 				<pagecontrol>259</pagecontrol>
@@ -353,9 +353,9 @@
 				<posy>5</posy>
 				<width>565</width>
 				<height>630</height>
-				<font>font10</font>
+				<font>font_comments_text</font>
 				<aligny>center</aligny>
-				<textcolor>black</textcolor>
+				<textcolor>FF000000</textcolor>
 				<align>left</align>
 				<info>Container(120).ListItem.Property(comments)</info>
 				<pagecontrol>260</pagecontrol>
