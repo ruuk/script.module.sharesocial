@@ -6,7 +6,7 @@ import iso8601
 __author__ = 'ruuk'
 __url__ = 'http://code.google.com'
 __date__ = '01-21-2013'
-__version__ = '0.2.2'
+__version__ = '0.2.3'
 __addon__ = xbmcaddon.Addon(id='script.module.sharesocial')
 __lang__ = __addon__.getLocalizedString
 
@@ -988,6 +988,7 @@ class ShareManager():
 		self.dialog.updateProgress(level,total,message,m2,m3)
 		return True
 
+'''
 def getVideoInfo(url):
 	return WebVideo().getVideoObject(url)
 	
@@ -1172,6 +1173,20 @@ class WebVideo():
 
 #http://www.vimeo.com/moogaloop/load/clip:82739
 #http://www.vimeo.com/moogaloop/play/clip:82739/38c7be0cecb92a0a3623c2769bccf73b/1221451200/?q=sd
+'''
+
+def refreshXBMCSkin():
+# 	d = xbmcgui.DialogProgress()
+# 	d.create('Forum Browser','Refreshing skin...')
+# 	try:
+# 		for p in range(10,110,10):
+# 			xbmc.sleep(50)
+# 			d.update(p)
+# 	finally:
+# 		d.close()
+	LOG('! REFRESHING XBMC SKIN !')
+	xbmc.executebuiltin('ReloadSkin()')
+	return True
 
 def copyGenericModImages(skinPath):
 	import shutil
@@ -1205,13 +1220,17 @@ def installSkinMod(restore=False):
 			return
 		finally:
 			dialog.close()
-		restart = True
+		#restart = True
 		xbmcgui.Dialog().ok('Success','Files copied.')
 	skinPath = localSkinPath
-	
-	dialogPath = os.path.join(skinPath,'720p','DialogContextMenu.xml')
-	backupPath = os.path.join(skinPath,'720p','DialogContextMenu.xml.SSbackup')
-	sourcePath = os.path.join(__addon__.getAddonInfo('path'),'skinmods',currentSkin + '.xml')
+	res = '720p'
+	suffix = ''
+	if not os.path.exists(os.path.join(skinPath,res)):
+		res = '1080i'
+		suffix = '-1080i'
+	dialogPath = os.path.join(skinPath,res,'DialogContextMenu.xml')
+	backupPath = os.path.join(skinPath,res,'DialogContextMenu.xml.SSbackup')
+	sourcePath = os.path.join(__addon__.getAddonInfo('path'),'skinmods',currentSkin + suffix + '.xml')
 	fallbackSourcePath = os.path.join(__addon__.getAddonInfo('path'),'skinmods','default.xml')
 	
 			
@@ -1233,7 +1252,7 @@ def installSkinMod(restore=False):
 		for f in ('ShareSocial-ButtonFocus.png','ShareSocial-CloseButtonFocus.png','ShareSocial-CloseButton.png','ShareSocial-DialogBack.png'):
 			dst = os.path.join(skinPath,'media',f)
 			if os.path.exists(dst): os.remove(dst)
-
+		refreshXBMCSkin()
 		xbmcgui.Dialog().ok('Undo','Mod successfully removed!')
 	else:
 		if os.path.exists(sourcePath):
@@ -1256,6 +1275,7 @@ def installSkinMod(restore=False):
 		os.remove(dialogPath)
 		open(dialogPath,'w').write(open(sourcePath,'r').read())
 		xbmcgui.Dialog().ok('Mod Install','Mod successfully installed!')
-		if restart:
-			xbmcgui.Dialog().ok('Restart','XBMC needs to be restarted','for the changes to take effect')
+		refreshXBMCSkin()
+		#if restart:
+		#	xbmcgui.Dialog().ok('Restart','XBMC needs to be restarted','for the changes to take effect')
 	

@@ -84,7 +84,7 @@
 				<font>Font_Reg19</font>
 				<pulseonselect>no</pulseonselect>
 				<textoffsety>8</textoffsety>
-				<onclick>RunScript(script.module.sharesocial,1,skin.aeon.nox,Confluence,$INFO[ListItem.FileExtension],$INFO[Listitem.PicturePath],$INFO[Listitem.Title],$INFO[Container.FolderPath],$INFO[ListItem.FileName],$INFO[Listitem.Label],$INFO[ListItem.FileNameAndPath])</onclick>
+				<onclick>RunScript(script.module.sharesocial,1,skin.aeon.nox,Aeon Nox,$INFO[ListItem.FileExtension],$INFO[Listitem.PicturePath],$INFO[Listitem.Title],$INFO[Container.FolderPath],$INFO[ListItem.FileName],$INFO[Listitem.Label],$INFO[ListItem.FileNameAndPath])</onclick>
 
 				<onleft>996</onleft>
 				<onright>996</onright>

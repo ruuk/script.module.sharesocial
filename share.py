@@ -1,5 +1,5 @@
 import os, sys, traceback, threading, time, binascii
-import xbmc, xbmcgui #@UnresolvedImport
+import xbmc, xbmcgui, xbmcvfs #@UnresolvedImport
 from lib import ShareSocial
 import urllib
 
@@ -538,11 +538,12 @@ def copyRemote( source, destination ):
 		dialog = xbmcgui.DialogProgress()
 		dialog.create('Network Copy','Copying file to local filesystem,','please wait...')
 		dialog.update(0)
-		msg = xbmc.executehttpapi( "FileCopy(%s,%s)" % ( source, destination ) ).replace( "<li>", "" )
+		success = xbmcvfs.copy(source,destination)
+		#msg = xbmc.executehttpapi( "FileCopy(%s,%s)" % ( source, destination ) ).replace( "<li>", "" )
 	finally:
 		dialog.close()
 		
-	LOG( "Remote Copy: %s - copy(%s,%s)" % ( msg, source, destination ))
+	LOG( "Remote Copy: %s - copy(%s,%s)" % ( success, source, destination ))
 	return os.path.exists(destination)
 
 def clearDirFiles(filepath):

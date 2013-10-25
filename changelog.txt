@@ -3,13 +3,22 @@ Social Sharing Changelog
 TODO:
     Fix timestamp issues
     
-Current Version : 0.2.2 (Beta)
+Current Version : 0.2.3 (Beta)
+
+*** 0.2.3 ***
+
+Added support for context mod on 1080p skins
+Added requirement for WebViewer to addon.xml (was always needed for twitter auth, now also uses it's video handling)
+Fix for local image sharing using deprecated xbmc module call
+Fix for local image sharing to work with recently updated api
+Added new custom Aeon Nox context dialog mod
+Now refreshes skin after skin mod install
 
 *** 0.2.2 ***
 
 Fixed the directory structure for proper import on some versions of python
 Fixed an error caused by auth using incorrect tokens
-Added a notification dialog when a new user is successfully added
+Added a notification dialog when a new Twitter user is successfully added
 
 *** 0.2.1 ***
 

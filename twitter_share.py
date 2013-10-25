@@ -3,6 +3,7 @@ from twitter import TwitterSession, LOG, getUserList, TwitterUser
 import twython
 
 from lib import ShareSocial
+from webviewer import video as webvideo#@UnresolvedImport
 
 def scaleImage(path):
 	try:
@@ -54,7 +55,7 @@ class TwitterTargetFunctions(ShareSocial.TargetFunctions):
 	
 	def getShareData(self,share):
 		infoDict = share.callbackData
-		share.media = ShareSocial.getVideoPlayable(infoDict.get('source'), infoDict.get('id'))
+		share.media = webvideo.getVideoPlayable(infoDict.get('source'), infoDict.get('id'))
 		return share
 		
 	def provide(self,getObject,ID=None):
@@ -94,8 +95,9 @@ class TwitterTargetFunctions(ShareSocial.TargetFunctions):
 							#print media[0].get('display_url')
 					elif urls:
 						url = urls[0].get('expanded_url')
-						video = ShareSocial.getVideoInfo(url)
+						video = webvideo.getVideoInfo(url)
 						if video:
+							print 'TEST'
 							textimage = video.thumbnail
 							vid_title = ''
 							if video.title: vid_title = video.title + ': '
@@ -149,7 +151,8 @@ class TwitterTargetFunctions(ShareSocial.TargetFunctions):
 			if share.latitude:
 				params['lat'] = share.latitude
 				params['long'] = share.longitude
-			session.twit.update_status_with_media(path,params=params)
+			params['media'] = open(path,'rb')
+			session.twit.update_status_with_media(**params)
 			return share.succeeded()
 		elif share.shareType == 'image' or share.shareType == 'video':
 			share.askMessage()
