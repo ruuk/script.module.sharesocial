@@ -157,7 +157,7 @@
                 <visible>[System.GetBool(videolibrary.groupmoviesets) + SubString(ListItem.Path,videodb://1/7/)] | SubString(Container.FolderPath,videodb://1/7/)</visible>
             </control>
             <control type="button" id="994">
-            	<visible>!PLUGIN_SHARE_VISIBLE!</visible>
+            	<visible>!Control.IsVisible(995) + !PLUGIN_SHARE_VISIBLE!</visible>
 				<description>Share button</description>
 				<height>58</height>
                 <width>462</width>

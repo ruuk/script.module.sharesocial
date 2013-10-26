@@ -5,9 +5,9 @@ import iso8601
 
 __author__ = 'ruuk'
 __url__ = 'http://code.google.com'
-__date__ = '01-21-2013'
-__version__ = '0.2.5'
+__date__ = '10-26-2013'
 __addon__ = xbmcaddon.Addon(id='script.module.sharesocial')
+__version__ = __addon__.getAddonInfo('version')
 __lang__ = __addon__.getLocalizedString
 
 APILEVEL = 1
@@ -1194,20 +1194,33 @@ def copyGenericModImages(skinPath):
 		src = os.path.join(__addon__.getAddonInfo('path'),'skinmods',f)
 		dst = os.path.join(skinPath,'media',f)
 		shutil.copy(src, dst)
-	
+
+def getSkinVersion(skin_path):
+	addon = os.path.join(skin_path,'addon.xml')
+	if not os.path.exists(addon): return '0.0.0'
+	acontent = open(addon,'r').read()
+	return acontent.split('<addon',1)[-1].split('version="',1)[-1].split('"',1)[0]
+
 def copyTree(source,target):
-	import shutil
-	shutil.copytree(source, target)
+	try:
+		import distutils.dir_util
+		copyT = distutils.dir_util.copy_tree
+	except:
+		import shutil
+		copyT = shutil.copytree
+		
+	copyT(source, target)
 	
 def installSkinMod(restore=False):
-	restart = False
 	localAddonsPath = os.path.join(xbmc.translatePath('special://home'),'addons')
 	skinPath = xbmc.translatePath('special://skin')
+	currentSkinPath = skinPath
 	if skinPath.endswith(os.path.sep): skinPath = skinPath[:-1]
 	currentSkin = os.path.basename(skinPath)
 	localSkinPath = os.path.join(localAddonsPath,currentSkin)
-	
-	if not os.path.exists(localSkinPath):
+	localVersion = getSkinVersion(localSkinPath)
+	currentVersion = getSkinVersion(currentSkinPath)
+	if not os.path.exists(localSkinPath) or not localVersion == currentVersion:
 		yesno = xbmcgui.Dialog().yesno('Mod Install','Skin not installed in user path.','Click Yes to copy,','click No to Abort')
 		if not yesno: return
 		dialog = xbmcgui.DialogProgress()
@@ -1235,8 +1248,8 @@ def installSkinMod(restore=False):
 	
 			
 	LOG('Local Addons Path: %s' % localAddonsPath)
-	LOG('Current skin: %s' % currentSkin)
-	LOG('Skin path: %s' % skinPath)
+	LOG('Current skin (%s/%s): %s' % (localVersion,currentVersion,currentSkin))
+	LOG('Skin path: %s' % currentSkinPath)
 	LOG('Target path: %s' % dialogPath)
 	LOG('Source path: %s' % sourcePath)
 	if restore:
@@ -1273,10 +1286,10 @@ def installSkinMod(restore=False):
 			open(backupPath,'w').write(open(dialogPath,'r').read())	
 			
 		os.remove(dialogPath)
-		supportedAddonIDs = ('plugin.video.youtube','plugin.video.revision3')
+		supportedAddonIDs = ('plugin.video.youtube','plugin.video.revision3','plugin.video.dailymotion_com','plugin.video.metacafe')
 		addonCheck = 'SubString(ListItem.FileNameAndPath,plugin://{0},Left)'
 		checks = []
-		pluginShareVisible = '!StringCompare(ListItem.Property(sharing),handled) + !Control.IsVisible(995)'
+		pluginShareVisible = '!StringCompare(ListItem.Property(sharing),handled)'
 		for a in supportedAddonIDs:
 			checks.append(addonCheck.format(a))
 		if checks: pluginShareVisible += ' + [' + ' | '.join(checks) + ']'

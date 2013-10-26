@@ -22,7 +22,32 @@
 			<width>300</width>
 			<height max="670">auto</height>
 			<itemgap>2</itemgap>
-			<onright>995</onright>
+			<control type="button" id="994">
+				<visible>!Control.IsVisible(995) + !PLUGIN_SHARE_VISIBLE!</visible>
+				<description>Share button</description>
+				<width>300</width>
+				<height>38</height>
+				<label>Share</label>
+				<font>fontContextMenu</font>
+				<align>center</align>
+				<textcolor>grey2</textcolor>
+				<focusedcolor>white</focusedcolor>
+				<onclick>RunScript(script.module.sharesocial,1,skin.confluence,$INFO[ListItem.Property(Addon.Name)],plugin,$INFO[ListItem.Thumb],$INFO[Listitem.Title],$INFO[Container.FolderPath],$INFO[ListItem.FileName],$INFO[Listitem.Label],$INFO[ListItem.FileNameAndPath])</onclick>
+				<texturefocus border="5">button-focus.png</texturefocus>
+			</control>
+			<control type="button" id="995">
+            	<visible>System.HasAddon(script.module.sharesocial) + !ListItem.IsFolder + !StringCompare(Container.FolderPath,) + !Container.Content(Addons) + !StringCompare(ListItem.Property(sharing),handled) + !SubString(ListItem.FileNameAndPath,plugin://,Left)</visible>
+				<description>Share button</description>
+				<width>300</width>
+				<height>38</height>
+				<label>Share</label>
+				<font>fontContextMenu</font>
+				<align>center</align>
+				<textcolor>grey2</textcolor>
+				<focusedcolor>white</focusedcolor>
+				<onclick>RunScript(script.module.sharesocial,1,skin.confluence,Confluence,$INFO[ListItem.FileExtension],$INFO[Listitem.PicturePath],$INFO[Listitem.Title],$INFO[Container.FolderPath],$INFO[ListItem.FileName],$INFO[Listitem.Label],$INFO[ListItem.FileNameAndPath])</onclick>
+				<texturefocus border="5">button-focus.png</texturefocus>
+			</control>
 		</control>
 		<control type="button">
 			<description>Close Window button</description>
@@ -40,68 +65,6 @@
 			<onup>2</onup>
 			<ondown>2</ondown>
 			<visible>system.getbool(input.enablemouse)</visible>
-		</control>
-		<control type="group">
-			<visible>System.HasAddon(script.module.sharesocial) + !ListItem.IsFolder + !StringCompare(Container.FolderPath,) + !Container.Content(Addons) + !StringCompare(ListItem.Property(sharing),handled) + !SubString(ListItem.FileNameAndPath,plugin://,Left)</visible>
-			<posx>335</posx>
-			<posy>10</posy>
-			<control type="image">
-				<description>Share button background image</description>
-				<posx>0</posx>
-				<posy>0</posy>
-				<width>168</width>
-				<height>72</height>
-				<texture border="20">DialogBack.png</texture>
-			</control>
-			<control type="button" id="995">
-				<description>Share button</description>
-				<posx>20</posx>
-				<posy>20</posy>
-				<width>128</width>
-				<height>32</height>
-				<label>Share</label>
-				<font>fontContextMenu</font>
-				<align>center</align>
-				<textcolor>grey2</textcolor>
-				<focusedcolor>white</focusedcolor>
-				<onclick>RunScript(script.module.sharesocial,1,skin.confluence,Confluence,$INFO[ListItem.FileExtension],$INFO[Listitem.PicturePath],$INFO[Listitem.Title],$INFO[Container.FolderPath],$INFO[ListItem.FileName],$INFO[Listitem.Label],$INFO[ListItem.FileNameAndPath])</onclick>
-				<texturefocus border="5">button-focus.png</texturefocus>
-				<onleft>996</onleft>
-				<onright>996</onright>
-				<onup>996</onup>
-				<ondown>996</ondown>
-			</control>
-		</control>
-		<control type="group">
-            <visible>!PLUGIN_SHARE_VISIBLE!</visible>
-			<posx>335</posx>
-			<posy>10</posy>
-			<control type="image">
-				<description>Share button background image</description>
-				<posx>0</posx>
-				<posy>0</posy>
-				<width>168</width>
-				<height>72</height>
-				<texture border="20">DialogBack.png</texture>
-			</control>
-			<control type="button" id="994">
-				<description>Share button</description>
-				<posx>20</posx>
-				<posy>20</posy>
-				<width>128</width>
-				<height>32</height>
-				<label>Share</label>
-				<font>fontContextMenu</font>
-				<align>center</align>
-				<textcolor>grey2</textcolor>
-				<focusedcolor>white</focusedcolor>
-				<onclick>RunScript(script.module.sharesocial,1,skin.confluence,$INFO[ListItem.Property(Addon.Name)],plugin,$INFO[ListItem.Thumb],$INFO[Listitem.Title],$INFO[Container.FolderPath],$INFO[ListItem.FileName],$INFO[Listitem.Label],$INFO[ListItem.FileNameAndPath])</onclick>
-				<texturefocus border="5">button-focus.png</texturefocus>
-				<onleft>996</onleft>
-				<onright>996</onright>
-				<onup>996</onup>
-				<ondown>996</ondown>
-			</control>
 		</control>
 		<control type="button" id="1000">
 			<description>button template</description>

@@ -557,6 +557,16 @@ def handlePluginShare(args):
 	elif 'revision3' in sourceID:
 		url_split = args.get('imagepath','').rsplit('/',1)[-1].split('--')
 		page = 'http://revision3.com/{0}/{1}'.format(url_split[0],url_split[2])
+	elif 'dailymotion_com' in sourceID:
+		videoID = args.get('path','').split('url=',1)[-1].split('&')[0]
+		page = 'http://www.dailymotion.com/video/%s' % videoID
+	elif 'metacafe' in sourceID:
+		videoID = args.get('path').rsplit('/',1)[-1]
+		page = "http://www.metacafe.com/w/%s" % videoID
+		'''
+		{'imagepath': 'http://s1.dmcdn.net/CuJ4C/x240-wPZ.jpg', 'addonName': '', 'title': 'H-E05-1', 'filename': '', 'ignore': 'script.module.sharesocial', 'apiver': '1', 'ext': 'plugin', 'addonID': 'skin.confluence', 'path': 'plugin://plugin.video.dailymotion_com/?url=x16ec11&mode=playVideo', 'folder': 'plugin://plugin.video.dailymotion_com/?mode=listVideos&url=https%3a%2f%2fapi.dailymotion.com%2fvideos%3ffields%3ddescription%2cduration%2cid%2cowner.username%2ctaken_time%2cthumbnail_large_url%2ctitle%2cviews_total%26channel%3dfun%26sort%3dcommented-today%26limit%3d50%26family_filter%3d1%26localization%3den_EN%26page%3d1', 'label': 'H-E05-1'}
+		{'imagepath': 'http://s1.mcstatic.com/thumb/11096432/28740650/4/videos/0/1/comedy_bang_bang_reggie_makes_music_jessica_alba_season_2.jpg?v=1', 'addonName': '', 'title': '', 'filename': 'hl-60280229', 'ignore': 'script.module.sharesocial', 'apiver': '1', 'ext': 'plugin', 'addonID': 'skin.confluence', 'path': 'plugin://plugin.video.metacafe/video/hl-60280229', 'folder': 'plugin://plugin.video.metacafe/videos/%2Ff%2Fvideos_about%2Fcomedy%2F/', 'label': 'Comedy Bang! Bang! - Reggie Makes Music: Jessica Alba Season: 2'}
+		'''
 	else:
 		print args
 		return None

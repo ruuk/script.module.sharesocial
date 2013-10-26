@@ -3,7 +3,13 @@ Social Sharing Changelog
 TODO:
     Fix timestamp issues
     
-Current Version : 0.2.5 (Beta)
+Current Version : 0.2.6 (Beta)
+
+*** 0.2.6 ***
+
+Added handling for sharing from DailyMotion plugin
+Added handling for sharing from MetaCafe plugin
+Fix and improvement for Confluence and default context menu mods
 
 *** 0.2.5 ***
 
