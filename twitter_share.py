@@ -3,7 +3,7 @@ from twitter import TwitterSession, LOG, getUserList, TwitterUser
 import twython
 
 from lib import ShareSocial
-from webviewer import video as webvideo#@UnresolvedImport
+import YDStreamExtractor as StreamExtractor
 
 def scaleImage(path):
 	try:
@@ -55,7 +55,7 @@ class TwitterTargetFunctions(ShareSocial.TargetFunctions):
 	
 	def getShareData(self,share):
 		infoDict = share.callbackData
-		share.media = webvideo.getVideoPlayable(infoDict.get('source'), infoDict.get('id'))
+		share.media = StreamExtractor.getVideoInfo(infoDict.get('page') or infoDict.get('id')).streamURL()
 		return share
 		
 	def provide(self,getObject,ID=None):
@@ -95,27 +95,25 @@ class TwitterTargetFunctions(ShareSocial.TargetFunctions):
 							#print media[0].get('display_url')
 					elif urls:
 						url = urls[0].get('expanded_url')
-						video = webvideo.getVideoInfo(url)
+						video = StreamExtractor.getVideoInfo(url)
 						if video:
 							textimage = video.thumbnail
 							vid_title = ''
 							if video.title: vid_title = video.title + ': '
-							if video.isVideo:
-								share = ShareSocial.getShare('script.module.sharesocial', 'video')
-								share.media = video.playableURL()
-								#print share.media
-								share.swf = video.swf
-								share.page = url
-								share.title = "%sFrom %s via Twitter via XBMC" % (vid_title,video.sourceName)
-								share.thumbnail = textimage
-								if not share.media:
-									share.callbackData = {'source':video.sourceName,'id':video.ID}
-							else:
-								share = ShareSocial.getShare('script.module.sharesocial', 'image')
-								share.media = textimage
-								share.page = url
-								share.title = "%sFrom %s via Twitter via XBMC" % (vid_title,video.sourceName)
-								share.thumbnail = textimage
+							share = ShareSocial.getShare('script.module.sharesocial', 'video')
+							share.media = video.streamURL()
+							#print share.media
+							share.page = url
+							share.title = "%sFrom %s via Twitter via XBMC" % (vid_title,video.sourceName)
+							share.thumbnail = textimage
+							if not share.media:
+								share.callbackData = {'source':video.sourceName,'id':video.ID,'page':url}
+#							else:
+#								share = ShareSocial.getShare('script.module.sharesocial', 'image')
+#								share.media = textimage
+#								share.page = url
+#								share.title = "%sFrom %s via Twitter via XBMC" % (vid_title,video.sourceName)
+#								share.thumbnail = textimage
 							
 				replyToID = r.get('in_reply_to_status_id')
 				if replyToID:

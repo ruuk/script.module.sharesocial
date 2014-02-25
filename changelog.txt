@@ -3,7 +3,11 @@ Social Sharing Changelog
 TODO:
     Fix timestamp issues
     
-Current Version : 0.2.6 (Beta)
+Current Version : 0.2.7 (Beta)
+
+*** 0.2.7 ***
+
+Video handling functions moved to new youtube-dl addon module
 
 *** 0.2.6 ***
 
