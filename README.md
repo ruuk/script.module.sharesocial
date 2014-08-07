@@ -1,7 +1,7 @@
 script.module.sharesocial
 =========================
 
-ShareSocial addon for Kodi (XBMC) - social sharing for XBMC
+ShareSocial addon for Kodi (XBMC) - social sharing for Kodi
 -----------------------------------------------------------
 Module that adds the ability to share media with social networking sites. Also includes a feed viewer with twitter built in and Facebook and Flickr via my other addons.
 
